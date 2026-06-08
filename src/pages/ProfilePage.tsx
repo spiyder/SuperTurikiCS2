@@ -37,6 +37,8 @@ export function ProfilePage({ user, onBack, onAvatarChange }: ProfilePageProps) 
   const [uploading, setUploading] = useState(false);
   const [editingBio, setEditingBio] = useState(false);
   const [bioValue, setBioValue] = useState('');
+  const [editingUsername, setEditingUsername] = useState(false);
+  const [usernameValue, setUsernameValue] = useState('');
   const [friends, setFriends] = useState<Profile[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<FriendRequest[]>([]);
   const [outgoingRequests, setOutgoingRequests] = useState<FriendRequest[]>([]);
@@ -67,6 +69,7 @@ export function ProfilePage({ user, onBack, onAvatarChange }: ProfilePageProps) 
     if (data) {
       setProfile(data);
       setBioValue(data.bio || '');
+      setUsernameValue(data.username || '');
     } else {
       // Create profile if doesn't exist
       const username = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Игрок';
@@ -78,6 +81,7 @@ export function ProfilePage({ user, onBack, onAvatarChange }: ProfilePageProps) 
       if (created) {
         setProfile(created);
         setBioValue(created.bio || '');
+        setUsernameValue(created.username || '');
       }
     }
   };
@@ -162,6 +166,22 @@ export function ProfilePage({ user, onBack, onAvatarChange }: ProfilePageProps) 
     setProfile(prev => prev ? { ...prev, bio: bioValue } : prev);
     setEditingBio(false);
     showToast('Описание сохранено');
+  };
+
+  const saveUsername = async () => {
+    const trimmed = usernameValue.trim();
+    if (!trimmed || trimmed.length < 3) {
+      showToast('Ник должен быть не менее 3 символов');
+      return;
+    }
+    if (trimmed.length > 24) {
+      showToast('Ник не может быть длиннее 24 символов');
+      return;
+    }
+    await supabase.from('profiles').update({ username: trimmed }).eq('id', user.id);
+    setProfile(prev => prev ? { ...prev, username: trimmed } : prev);
+    setEditingUsername(false);
+    showToast('Ник обновлён!');
   };
 
   const handleSearch = async () => {
@@ -301,9 +321,37 @@ export function ProfilePage({ user, onBack, onAvatarChange }: ProfilePageProps) 
 
             {/* Info */}
             <div className="flex-1 text-center sm:text-left">
-              <h2 className="font-display text-2xl font-bold text-white mb-1">
-                {profile?.username || user.email?.split('@')[0]}
-              </h2>
+              {/* Username */}
+              {editingUsername ? (
+                <div className="flex items-center gap-2 mb-1">
+                  <input
+                    value={usernameValue}
+                    onChange={e => setUsernameValue(e.target.value)}
+                    maxLength={24}
+                    onKeyDown={e => { if (e.key === 'Enter') saveUsername(); if (e.key === 'Escape') { setEditingUsername(false); setUsernameValue(profile?.username || ''); } }}
+                    autoFocus
+                    className="font-display text-2xl font-bold bg-dark-300 border border-primary-500 rounded-lg px-2 py-0.5 text-white focus:outline-none w-full sm:w-auto"
+                  />
+                  <button onClick={saveUsername} className="p-1.5 bg-primary-500 hover:bg-primary-400 rounded-lg text-white transition-colors flex-shrink-0">
+                    <Save className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => { setEditingUsername(false); setUsernameValue(profile?.username || ''); }} className="p-1.5 bg-dark-200 hover:bg-dark-50 rounded-lg text-gray-400 transition-colors flex-shrink-0">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center sm:justify-start gap-2 mb-1 group">
+                  <h2 className="font-display text-2xl font-bold text-white">
+                    {profile?.username || user.email?.split('@')[0]}
+                  </h2>
+                  <button
+                    onClick={() => { setEditingUsername(true); setUsernameValue(profile?.username || ''); }}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-primary-500"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
               <p className="text-gray-500 text-sm mb-4">{user.email}</p>
 
               {/* Bio */}
