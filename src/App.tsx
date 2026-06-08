@@ -1,28 +1,32 @@
 import { useState, useEffect } from 'react';
 import {
-  Trophy,
-  Users,
-  Gamepad2,
-  Zap,
-  Shield,
-  Target,
-  Crown,
-  Star,
-  ChevronRight,
-  Menu,
-  X,
-  Play,
-  Calendar,
-  Award,
-  TrendingUp,
-  MessageCircle,
-  Send,
-  LogOut,
-  User,
+  Trophy, Users, Gamepad2, Zap, Shield, Target, Crown, Star,
+  ChevronRight, Menu, X, Play, Calendar, Award, TrendingUp,
+  MessageCircle, Send, LogOut, User,
 } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { AuthModal } from './components/AuthModal';
+import { AdminPage } from './pages/AdminPage';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+
+const ADMIN_EMAIL = 'gergenov10@gmail.com';
+
+interface Tournament {
+  id: number;
+  name: string;
+  date: string;
+  prize: string;
+  slots_taken: number;
+  slots_total: number;
+  status: string;
+}
+
+interface SiteStats {
+  players_count: string;
+  tournaments_count: string;
+  prize_pool: string;
+  support: string;
+}
 
 function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -31,6 +35,10 @@ function App() {
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [siteStats, setSiteStats] = useState<SiteStats>({
+    players_count: '10,000+', tournaments_count: '500+', prize_pool: '1M+', support: '24/7'
+  });
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -39,36 +47,39 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // Получаем текущую сессию
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-    });
-
-    // Слушаем изменения авторизации
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
+    supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setUser(session?.user ?? null));
     return () => subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    loadTournaments();
+    loadStats();
+  }, []);
+
+  const loadTournaments = async () => {
+    const { data } = await supabase.from('tournaments').select('*').neq('status', 'finished').order('created_at', { ascending: false }).limit(3);
+    if (data && data.length > 0) setTournaments(data);
+  };
+
+  const loadStats = async () => {
+    const { data } = await supabase.from('site_stats').select('*').single();
+    if (data) setSiteStats(data);
+  };
+
+  const isAdmin = user?.email === ADMIN_EMAIL;
+
   const openLogin = () => { setAuthMode('login'); setAuthOpen(true); };
   const openRegister = () => { setAuthMode('register'); setAuthOpen(true); };
+  const handleLogout = async () => { await supabase.auth.signOut(); };
+  const getUserName = () => user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Игрок';
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-  };
+  if (isAdmin) return <AdminPage onLogout={handleLogout} />;
 
-  const getUserName = () => {
-    if (!user) return '';
-    return user.user_metadata?.full_name || user.email?.split('@')[0] || 'Игрок';
-  };
-
-  const tournaments = [
-    { id: 1, name: 'LEAGUE OPEN QUALIFIER', date: '15 июня в 19:00 МСК', prize: '50,000 ₽', slots: '64/128', status: 'open' },
-    { id: 2, name: 'PRO SERIES #3', date: '20 июня в 20:00 МСК', prize: '100,000 ₽', slots: '32/64', status: 'soon' },
-    { id: 3, name: 'AMATEUR CUP', date: '25 июня в 18:00 МСК', prize: '25,000 ₽', slots: '89/128', status: 'open' },
+  const displayTournaments = tournaments.length > 0 ? tournaments : [
+    { id: 1, name: 'LEAGUE OPEN QUALIFIER', date: '15 июня в 19:00 МСК', prize: '50,000 ₽', slots_taken: 64, slots_total: 128, status: 'open' },
+    { id: 2, name: 'PRO SERIES #3', date: '20 июня в 20:00 МСК', prize: '100,000 ₽', slots_taken: 32, slots_total: 64, status: 'soon' },
+    { id: 3, name: 'AMATEUR CUP', date: '25 июня в 18:00 МСК', prize: '25,000 ₽', slots_taken: 89, slots_total: 128, status: 'open' },
   ];
 
   const features = [
@@ -92,12 +103,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-dark-300">
-      {/* Auth Modal */}
-      <AuthModal
-        isOpen={authOpen}
-        onClose={() => setAuthOpen(false)}
-        initialMode={authMode}
-      />
+      <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} initialMode={authMode} />
 
       {/* Header */}
       <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-dark-100/95 backdrop-blur-md shadow-lg' : 'bg-transparent'}`}>
@@ -111,15 +117,12 @@ function App() {
                 Super<span className="text-primary-500">Turiki</span>CS2
               </span>
             </div>
-
-            {/* Desktop Nav */}
             <nav className="hidden md:flex items-center gap-8">
               <a href="#tournaments" className="text-gray-300 hover:text-primary-500 transition-colors">Турниры</a>
               <a href="#features" className="text-gray-300 hover:text-primary-500 transition-colors">Возможности</a>
               <a href="#how-it-works" className="text-gray-300 hover:text-primary-500 transition-colors">Как это работает</a>
               <a href="#community" className="text-gray-300 hover:text-primary-500 transition-colors">Сообщество</a>
             </nav>
-
             <div className="hidden md:flex items-center gap-4">
               {user ? (
                 <div className="flex items-center gap-3">
@@ -127,34 +130,22 @@ function App() {
                     <User className="w-4 h-4 text-primary-500" />
                     <span className="text-white text-sm font-medium">{getUserName()}</span>
                   </div>
-                  <button
-                    onClick={handleLogout}
-                    className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors px-3 py-2"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    Выйти
+                  <button onClick={handleLogout} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors px-3 py-2">
+                    <LogOut className="w-4 h-4" /> Выйти
                   </button>
                 </div>
               ) : (
                 <>
-                  <button onClick={openLogin} className="text-gray-300 hover:text-white transition-colors">
-                    Войти
-                  </button>
-                  <button onClick={openRegister} className="btn-primary">
-                    Регистрация
-                  </button>
+                  <button onClick={openLogin} className="text-gray-300 hover:text-white transition-colors">Войти</button>
+                  <button onClick={openRegister} className="btn-primary">Регистрация</button>
                 </>
               )}
             </div>
-
-            {/* Mobile Menu Button */}
             <button className="md:hidden text-white" onClick={() => setIsMenuOpen(!isMenuOpen)}>
               {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
         </div>
-
-        {/* Mobile Menu */}
         {isMenuOpen && (
           <div className="md:hidden bg-dark-100 border-t border-dark-50">
             <div className="px-4 py-4 space-y-4">
@@ -179,7 +170,7 @@ function App() {
         )}
       </header>
 
-      {/* Hero Section */}
+      {/* Hero */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-gradient-to-br from-dark-400 via-dark-300 to-dark-200" />
@@ -187,7 +178,6 @@ function App() {
           <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-primary-600/10 rounded-full blur-3xl" />
           <div className="absolute inset-0 opacity-20" style={{ backgroundImage: `radial-gradient(circle at 2px 2px, rgba(249,115,22,0.15) 1px, transparent 0)`, backgroundSize: '40px 40px' }} />
         </div>
-
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="animate-float mb-8">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500/10 border border-primary-500/30 rounded-full">
@@ -195,35 +185,28 @@ function App() {
               <span className="text-primary-400 text-sm font-medium">Open Beta — открытая бета</span>
             </div>
           </div>
-
           <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
-            Киберспортивная платформа
-            <br />
+            Киберспортивная платформа<br />
             <span className="text-gradient">нового поколения</span>
           </h1>
-
           <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto mb-10">
-            Участвуй в турнирах CS2, создавай команды и соревнуйся с лучшими игроками СНГ.
-            Платформа для тех, кто играет на победу.
+            Участвуй в турнирах CS2, создавай команды и соревнуйся с лучшими игроками СНГ. Платформа для тех, кто играет на победу.
           </p>
-
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
             <button onClick={user ? undefined : openRegister} className="btn-primary flex items-center gap-2 text-lg px-8 py-4">
               <Play className="w-5 h-5" />
               {user ? `Привет, ${getUserName()}!` : 'Начать играть'}
             </button>
             <button className="btn-outline flex items-center gap-2 text-lg px-8 py-4">
-              Узнать больше
-              <ChevronRight className="w-5 h-5" />
+              Узнать больше <ChevronRight className="w-5 h-5" />
             </button>
           </div>
-
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
             {[
-              { value: '10,000+', label: 'Игроков' },
-              { value: '500+', label: 'Турниров' },
-              { value: '1M+', label: 'Призовой фонд' },
-              { value: '24/7', label: 'Поддержка' },
+              { value: siteStats.players_count, label: 'Игроков' },
+              { value: siteStats.tournaments_count, label: 'Турниров' },
+              { value: siteStats.prize_pool, label: 'Призовой фонд' },
+              { value: siteStats.support, label: 'Поддержка' },
             ].map((stat, idx) => (
               <div key={idx} className="text-center">
                 <div className="font-display text-2xl md:text-3xl font-bold text-primary-500">{stat.value}</div>
@@ -232,7 +215,6 @@ function App() {
             ))}
           </div>
         </div>
-
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
           <div className="w-6 h-10 border-2 border-gray-600 rounded-full flex items-start justify-center p-2">
             <div className="w-1 h-2 bg-primary-500 rounded-full animate-bounce" />
@@ -240,7 +222,7 @@ function App() {
         </div>
       </section>
 
-      {/* Tournaments Section */}
+      {/* Tournaments */}
       <section id="tournaments" className="py-20 md:py-32 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -248,9 +230,8 @@ function App() {
             <h2 className="section-title mt-2">Ближайшие турниры</h2>
             <p className="text-gray-400 max-w-2xl mx-auto">Выбери турнир и начни свой путь к победе уже сегодня</p>
           </div>
-
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {tournaments.map((tournament) => (
+            {displayTournaments.map((tournament) => (
               <div key={tournament.id} className="card group cursor-pointer hover:transform hover:-translate-y-1">
                 <div className="flex items-center justify-between mb-4">
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold ${tournament.status === 'open' ? 'bg-green-500/20 text-green-400' : 'bg-primary-500/20 text-primary-400'}`}>
@@ -262,7 +243,7 @@ function App() {
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center gap-2 text-gray-400 text-sm"><Calendar className="w-4 h-4 text-primary-500" />{tournament.date}</div>
                   <div className="flex items-center gap-2 text-gray-400 text-sm"><Award className="w-4 h-4 text-primary-500" />Призовой фонд: {tournament.prize}</div>
-                  <div className="flex items-center gap-2 text-gray-400 text-sm"><Users className="w-4 h-4 text-primary-500" />Слотов: {tournament.slots}</div>
+                  <div className="flex items-center gap-2 text-gray-400 text-sm"><Users className="w-4 h-4 text-primary-500" />Слотов: {tournament.slots_taken}/{tournament.slots_total}</div>
                 </div>
                 <button onClick={user ? undefined : openLogin} className="w-full btn-primary">
                   {user ? 'Участвовать' : 'Войди чтобы участвовать'}
@@ -270,25 +251,19 @@ function App() {
               </div>
             ))}
           </div>
-
           <div className="text-center mt-10">
-            <button className="btn-outline flex items-center gap-2 mx-auto">
-              Все турниры <ChevronRight className="w-5 h-5" />
-            </button>
+            <button className="btn-outline flex items-center gap-2 mx-auto">Все турниры <ChevronRight className="w-5 h-5" /></button>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Features */}
       <section id="features" className="py-20 md:py-32 bg-dark-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <span className="text-primary-500 font-semibold text-sm uppercase tracking-wider">Почему мы</span>
             <h2 className="section-title mt-2">Экосистема, а не сервис</h2>
-            <p className="text-gray-400 max-w-3xl mx-auto text-lg">
-              SuperTurikiCS2 — это не просто киберспортивная платформа, а целая экосистема,
-              объединяющая игроков, тренеров, организаторов и бренды. Всё в одном месте.
-            </p>
+            <p className="text-gray-400 max-w-3xl mx-auto text-lg">SuperTurikiCS2 — это не просто киберспортивная платформа, а целая экосистема, объединяющая игроков, тренеров, организаторов и бренды.</p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((feature, idx) => (
@@ -304,7 +279,7 @@ function App() {
         </div>
       </section>
 
-      {/* How it Works Section */}
+      {/* How it works */}
       <section id="how-it-works" className="py-20 md:py-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -315,9 +290,7 @@ function App() {
           <div className="grid md:grid-cols-3 gap-8">
             {steps.map((step, idx) => (
               <div key={idx} className="relative">
-                {idx < steps.length - 1 && (
-                  <div className="hidden md:block absolute top-12 left-full w-full h-0.5 bg-gradient-to-r from-primary-500/50 to-transparent" />
-                )}
+                {idx < steps.length - 1 && <div className="hidden md:block absolute top-12 left-full w-full h-0.5 bg-gradient-to-r from-primary-500/50 to-transparent" />}
                 <div className="text-center">
                   <div className="w-24 h-24 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary-500/30">
                     <span className="font-display text-3xl font-bold text-white">{step.number}</span>
@@ -331,7 +304,7 @@ function App() {
         </div>
       </section>
 
-      {/* Roles Section */}
+      {/* Roles */}
       <section className="py-20 md:py-32 bg-dark-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -342,11 +315,8 @@ function App() {
           <div className="flex justify-center mb-8">
             <div className="bg-dark-100 rounded-full p-1.5 flex gap-1">
               {roles.map((role) => (
-                <button
-                  key={role.id}
-                  onClick={() => setActiveTab(role.id)}
-                  className={`px-6 py-3 rounded-full font-medium transition-all ${activeTab === role.id ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30' : 'text-gray-400 hover:text-white'}`}
-                >
+                <button key={role.id} onClick={() => setActiveTab(role.id)}
+                  className={`px-6 py-3 rounded-full font-medium transition-all ${activeTab === role.id ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30' : 'text-gray-400 hover:text-white'}`}>
                   {role.title}
                 </button>
               ))}
@@ -370,7 +340,7 @@ function App() {
         </div>
       </section>
 
-      {/* Community Section */}
+      {/* Community */}
       <section id="community" className="py-20 md:py-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -398,7 +368,7 @@ function App() {
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* CTA */}
       <section className="py-20 md:py-32 relative overflow-hidden">
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-gradient-to-br from-primary-600/20 via-dark-300 to-dark-400" />
@@ -412,20 +382,17 @@ function App() {
           </div>
           <h2 className="font-display text-3xl md:text-5xl font-bold text-white mb-6">Готов начать?</h2>
           <p className="text-lg text-gray-300 mb-8 max-w-2xl mx-auto">
-            Создай аккаунт за минуту и присоединяйся к ближайшему турниру.
-            Регистрация доступна только лицам <strong className="text-primary-500">18+</strong>.
+            Создай аккаунт за минуту и присоединяйся к ближайшему турниру. Регистрация доступна только лицам <strong className="text-primary-500">18+</strong>.
           </p>
           {!user && (
-            <button onClick={openRegister} className="btn-primary text-lg px-10 py-4 animate-pulse-glow">
-              Зарегистрироваться бесплатно
-            </button>
-          )}
-          {!user && (
-            <p className="text-gray-500 text-sm mt-6">
-              Регистрируясь, вы подтверждаете, что вам исполнилось 18 лет, и принимаете{' '}
-              <a href="#" className="text-primary-500 hover:underline">пользовательское соглашение</a>{' '}и{' '}
-              <a href="#" className="text-primary-500 hover:underline">политику конфиденциальности</a>.
-            </p>
+            <>
+              <button onClick={openRegister} className="btn-primary text-lg px-10 py-4 animate-pulse-glow">Зарегистрироваться бесплатно</button>
+              <p className="text-gray-500 text-sm mt-6">
+                Регистрируясь, вы подтверждаете, что вам исполнилось 18 лет, и принимаете{' '}
+                <a href="#" className="text-primary-500 hover:underline">пользовательское соглашение</a>{' '}и{' '}
+                <a href="#" className="text-primary-500 hover:underline">политику конфиденциальности</a>.
+              </p>
+            </>
           )}
         </div>
       </section>
@@ -441,24 +408,23 @@ function App() {
                 </div>
                 <span className="font-display font-bold text-xl text-white">Super<span className="text-primary-500">Turiki</span>CS2</span>
               </div>
-              <p className="text-gray-400 max-w-md">Киберспортивная платформа нового поколения для турнирной игры в CS2. Участвуй, побеждай, становись легендой.</p>
+              <p className="text-gray-400 max-w-md">Киберспортивная платформа нового поколения для турнирной игры в CS2.</p>
             </div>
             <div>
               <h4 className="text-white font-semibold mb-4">Навигация</h4>
               <ul className="space-y-2">
-                <li><a href="#tournaments" className="text-gray-400 hover:text-primary-500 transition-colors">Турниры</a></li>
-                <li><a href="#features" className="text-gray-400 hover:text-primary-500 transition-colors">Возможности</a></li>
-                <li><a href="#how-it-works" className="text-gray-400 hover:text-primary-500 transition-colors">Как это работает</a></li>
-                <li><a href="#community" className="text-gray-400 hover:text-primary-500 transition-colors">Сообщество</a></li>
+                {['#tournaments:Турниры', '#features:Возможности', '#how-it-works:Как это работает', '#community:Сообщество'].map(item => {
+                  const [href, label] = item.split(':');
+                  return <li key={href}><a href={href} className="text-gray-400 hover:text-primary-500 transition-colors">{label}</a></li>;
+                })}
               </ul>
             </div>
             <div>
               <h4 className="text-white font-semibold mb-4">Поддержка</h4>
               <ul className="space-y-2">
-                <li><a href="#" className="text-gray-400 hover:text-primary-500 transition-colors">FAQ</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-primary-500 transition-colors">Правила</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-primary-500 transition-colors">Контакты</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-primary-500 transition-colors">Баг-репорт</a></li>
+                {['FAQ', 'Правила', 'Контакты', 'Баг-репорт'].map(item => (
+                  <li key={item}><a href="#" className="text-gray-400 hover:text-primary-500 transition-colors">{item}</a></li>
+                ))}
               </ul>
             </div>
           </div>
@@ -473,11 +439,9 @@ function App() {
         </div>
       </footer>
 
-      {/* Support button */}
       <div className="fixed bottom-4 right-4 z-50">
         <button className="bg-primary-500 hover:bg-primary-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg shadow-primary-500/30 flex items-center gap-2 transition-all">
-          <Zap className="w-4 h-4" />
-          Поддержка
+          <Zap className="w-4 h-4" /> Поддержка
         </button>
       </div>
     </div>
