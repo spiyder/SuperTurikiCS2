@@ -1,6 +1,3 @@
-
-raw
-Tournamentpage · TSX
 import { useState, useEffect } from 'react';
 import {
   ArrowLeft, Trophy, Calendar, Users, Award, CheckCircle,

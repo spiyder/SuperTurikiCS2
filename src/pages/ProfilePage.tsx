@@ -1,10 +1,3 @@
-// ProfilePage.tsx — добавлена вкладка "Моя команда"
-// Изменения по сравнению с оригиналом:
-//   1. Добавлен импорт TeamTab
-//   2. Вкладка 'team' добавлена в тип tab и массив tabs
-//   3. Рендер <TeamTab> при tab === 'team'
-// Остальной код — без изменений
- 
 import { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft, Camera, User, UserPlus, UserCheck, UserX,
@@ -13,8 +6,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
-import { TeamTab } from './TeamTab'; // ← НОВЫЙ ИМПОРТ
- 
+import { TeamTab } from '../components/TeamTab';
 interface Profile {
   id: string;
   username: string;
