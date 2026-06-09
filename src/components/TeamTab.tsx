@@ -2,17 +2,32 @@ import { useState, useEffect } from 'react';
 import {
   Crown, Users, UserPlus, UserX, Edit3, Save, X, Search,
   Check, Shield, Gamepad2, User, AlertCircle, Plus, Trash2,
+  ChevronDown,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
- 
+
+type GameRole = 'captain' | 'lurker' | 'support' | 'openfragger' | 'sniper';
+
+const GAME_ROLES: { value: GameRole; label: string; color: string; emoji: string }[] = [
+  { value: 'captain',     label: 'Капитан',     color: 'text-yellow-400',  emoji: '👑' },
+  { value: 'openfragger', label: 'Опенфраггер', color: 'text-red-400',     emoji: '🔥' },
+  { value: 'sniper',      label: 'Снайпер',     color: 'text-blue-400',    emoji: '🎯' },
+  { value: 'lurker',      label: 'Лёркер',      color: 'text-purple-400',  emoji: '👤' },
+  { value: 'support',     label: 'Саппорт',     color: 'text-green-400',   emoji: '🛡️' },
+];
+
+function getRoleInfo(role: string) {
+  return GAME_ROLES.find(r => r.value === role) ?? { label: role, color: 'text-gray-400', emoji: '🎮' };
+}
+
 interface TeamMember {
   user_id: string;
-  role: 'captain' | 'member';
+  role: string; // game role now stored here
   username: string;
   avatar_url: string | null;
 }
- 
+
 interface Team {
   id: number;
   name: string;
@@ -20,37 +35,48 @@ interface Team {
   captain_id: string;
   created_at: string;
 }
- 
+
 interface TeamTabProps {
   user: SupabaseUser;
   showToast: (msg: string) => void;
 }
- 
+
 export function TeamTab({ user, showToast }: TeamTabProps) {
   const [team, setTeam] = useState<Team | null>(null);
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState(false);
- 
+
   // Create form
   const [newName, setNewName] = useState('');
   const [newTag, setNewTag] = useState('');
- 
+
   // Edit form
   const [editName, setEditName] = useState('');
   const [editTag, setEditTag] = useState('');
- 
+
   // Player search
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<{ id: string; username: string; avatar_url: string | null }[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [addingId, setAddingId] = useState<string | null>(null);
- 
+
+  // Role dropdown open state per member
+  const [openRoleMenu, setOpenRoleMenu] = useState<string | null>(null);
+  const [updatingRole, setUpdatingRole] = useState<string | null>(null);
+
   useEffect(() => {
     loadTeam();
   }, []);
- 
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const close = () => setOpenRoleMenu(null);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, []);
+
   const loadTeam = async () => {
     setLoading(true);
     const { data: membership } = await supabase
@@ -58,15 +84,15 @@ export function TeamTab({ user, showToast }: TeamTabProps) {
       .select('team_id, role')
       .eq('user_id', user.id)
       .maybeSingle();
- 
+
     if (!membership) { setTeam(null); setMembers([]); setLoading(false); return; }
- 
+
     const { data: teamData } = await supabase
       .from('teams')
       .select('*')
       .eq('id', membership.team_id)
       .single();
- 
+
     if (!teamData) { setTeam(null); setLoading(false); return; }
     setTeam(teamData);
     setEditName(teamData.name);
@@ -74,13 +100,13 @@ export function TeamTab({ user, showToast }: TeamTabProps) {
     await loadMembers(teamData.id);
     setLoading(false);
   };
- 
+
   const loadMembers = async (teamId: number) => {
     const { data } = await supabase
       .from('team_members')
       .select('user_id, role, profiles(id, username, avatar_url)')
       .eq('team_id', teamId);
- 
+
     const enriched: TeamMember[] = (data || []).map((m: any) => ({
       user_id: m.user_id,
       role: m.role,
@@ -89,42 +115,42 @@ export function TeamTab({ user, showToast }: TeamTabProps) {
     }));
     setMembers(enriched);
   };
- 
+
   const createTeam = async () => {
     const name = newName.trim();
     const tag = newTag.trim().toUpperCase();
     if (!name || name.length < 3) { showToast('Название команды — минимум 3 символа'); return; }
     if (!tag || tag.length < 2 || tag.length > 5) { showToast('Тег: 2–5 символов'); return; }
- 
+
     const { data: created, error } = await supabase
       .from('teams')
       .insert({ name, tag, captain_id: user.id })
       .select()
       .single();
- 
+
     if (error) { showToast('Ошибка создания команды'); return; }
- 
+
     await supabase.from('team_members').insert({ team_id: created.id, user_id: user.id, role: 'captain' });
- 
+
     showToast('Команда создана!');
     setCreating(false);
     setNewName(''); setNewTag('');
     await loadTeam();
   };
- 
+
   const saveTeamEdits = async () => {
     if (!team) return;
     const name = editName.trim();
     const tag = editTag.trim().toUpperCase();
     if (!name || name.length < 3) { showToast('Минимум 3 символа'); return; }
     if (!tag || tag.length < 2 || tag.length > 5) { showToast('Тег: 2–5 символов'); return; }
- 
+
     await supabase.from('teams').update({ name, tag }).eq('id', team.id);
     setTeam(prev => prev ? { ...prev, name, tag } : prev);
     setEditing(false);
     showToast('Команда обновлена');
   };
- 
+
   const disbandTeam = async () => {
     if (!team) return;
     if (!confirm(`Расформировать команду "${team.name}"? Это действие нельзя отменить.`)) return;
@@ -134,7 +160,7 @@ export function TeamTab({ user, showToast }: TeamTabProps) {
     setMembers([]);
     showToast('Команда расформирована');
   };
- 
+
   const leaveTeam = async () => {
     if (!team) return;
     if (!confirm('Покинуть команду?')) return;
@@ -143,7 +169,7 @@ export function TeamTab({ user, showToast }: TeamTabProps) {
     setMembers([]);
     showToast('Вы покинули команду');
   };
- 
+
   const searchPlayers = async () => {
     if (!searchQuery.trim()) return;
     setSearchLoading(true);
@@ -153,42 +179,68 @@ export function TeamTab({ user, showToast }: TeamTabProps) {
       .ilike('username', `%${searchQuery}%`)
       .neq('id', user.id)
       .limit(8);
-    // Filter out existing members
     const memberIds = members.map(m => m.user_id);
     setSearchResults((data || []).filter(p => !memberIds.includes(p.id)));
     setSearchLoading(false);
   };
- 
+
   const addMember = async (playerId: string, username: string) => {
     if (!team) return;
     if (members.length >= 5) { showToast('В команде уже 5 игроков'); return; }
     setAddingId(playerId);
- 
-    // Check if player is already on another team
+
     const { data: existing } = await supabase
       .from('team_members')
       .select('team_id')
       .eq('user_id', playerId)
       .maybeSingle();
- 
+
     if (existing) { showToast(`${username} уже состоит в другой команде`); setAddingId(null); return; }
- 
-    await supabase.from('team_members').insert({ team_id: team.id, user_id: playerId, role: 'member' });
+
+    // Assign default game role based on slot position
+    const usedRoles = members.map(m => m.role);
+    const defaultRole = GAME_ROLES.find(r => !usedRoles.includes(r.value))?.value ?? 'support';
+
+    await supabase.from('team_members').insert({ team_id: team.id, user_id: playerId, role: defaultRole });
     showToast(`${username} добавлен в команду`);
     setAddingId(null);
     setSearchResults(prev => prev.filter(p => p.id !== playerId));
     await loadMembers(team.id);
   };
- 
+
   const removeMember = async (memberId: string, username: string) => {
     if (!team) return;
     await supabase.from('team_members').delete().eq('team_id', team.id).eq('user_id', memberId);
     showToast(`${username} удалён из команды`);
     await loadMembers(team.id);
   };
- 
+
+  const changeRole = async (memberId: string, newRole: GameRole) => {
+    if (!team) return;
+    // Check role not already taken by someone else
+    const conflict = members.find(m => m.role === newRole && m.user_id !== memberId);
+    if (conflict) {
+      showToast(`Роль "${getRoleInfo(newRole).label}" уже занята игроком ${conflict.username}`);
+      setOpenRoleMenu(null);
+      return;
+    }
+    setUpdatingRole(memberId);
+    await supabase.from('team_members').update({ role: newRole }).eq('team_id', team.id).eq('user_id', memberId);
+    setMembers(prev => prev.map(m => m.user_id === memberId ? { ...m, role: newRole } : m));
+    setOpenRoleMenu(null);
+    setUpdatingRole(null);
+    showToast(`Роль обновлена: ${getRoleInfo(newRole).label}`);
+  };
+
   const isCaptain = team?.captain_id === user.id;
- 
+
+  // Slot order: always show captain first, then fill by role preference
+  const SLOT_ORDER: GameRole[] = ['captain', 'openfragger', 'sniper', 'lurker', 'support'];
+  const slots = SLOT_ORDER.map(role => ({
+    role,
+    member: members.find(m => m.role === role) ?? null,
+  }));
+
   if (loading) {
     return (
       <div className="text-center py-16">
@@ -196,7 +248,7 @@ export function TeamTab({ user, showToast }: TeamTabProps) {
       </div>
     );
   }
- 
+
   // ── No team ──────────────────────────────────────────────────────────────────
   if (!team) {
     return (
@@ -208,7 +260,7 @@ export function TeamTab({ user, showToast }: TeamTabProps) {
           <p className="font-medium text-gray-300 mb-1">У тебя нет команды</p>
           <p className="text-gray-500 text-sm">Создай свою или попроси капитана добавить тебя</p>
         </div>
- 
+
         {creating ? (
           <div className="card space-y-4">
             <h3 className="font-display font-bold text-white flex items-center gap-2">
@@ -231,7 +283,7 @@ export function TeamTab({ user, showToast }: TeamTabProps) {
                 onChange={e => setNewTag(e.target.value.toUpperCase())}
                 placeholder="NaVi"
                 maxLength={5}
-                className="w-full bg-dark-200 border border-dark-50 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-primary-500 transition-colors uppercase tracking-widest"
+                className="w-full bg-dark-200 border border-dark-50 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-primary-500 uppercase tracking-widest"
               />
             </div>
             <div className="flex gap-3">
@@ -254,7 +306,7 @@ export function TeamTab({ user, showToast }: TeamTabProps) {
       </div>
     );
   }
- 
+
   // ── Has team ─────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-5">
@@ -325,66 +377,126 @@ export function TeamTab({ user, showToast }: TeamTabProps) {
               )}
             </div>
           )}
- 
+
           {/* Slot meter */}
           <div className="mb-5">
             <div className="flex gap-1.5">
-              {Array.from({ length: 5 }).map((_, i) => {
-                const m = members[i];
-                return (
-                  <div
-                    key={i}
-                    className={`flex-1 h-1.5 rounded-full transition-all duration-300 ${
-                      m ? 'bg-primary-500' : 'bg-dark-50'
-                    }`}
-                  />
-                );
-              })}
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`flex-1 h-1.5 rounded-full transition-all duration-300 ${
+                    i < members.length ? 'bg-primary-500' : 'bg-dark-50'
+                  }`}
+                />
+              ))}
             </div>
           </div>
- 
-          {/* Members list */}
+
+          {/* Slots list */}
           <div className="space-y-2">
-            {members.map(m => (
-              <div key={m.user_id} className="flex items-center gap-3 py-2 px-3 bg-dark-300/60 rounded-xl border border-dark-50">
-                <div className="w-9 h-9 rounded-lg overflow-hidden bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center flex-shrink-0">
-                  {m.avatar_url
-                    ? <img src={m.avatar_url} alt="" className="w-full h-full object-cover" />
-                    : <User className="w-4 h-4 text-white" />
-                  }
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-white font-medium text-sm truncate">{m.username}</div>
-                  <div className="flex items-center gap-1 text-xs mt-0.5">
-                    {m.role === 'captain'
-                      ? <span className="flex items-center gap-1 text-yellow-400"><Crown className="w-3 h-3" /> Капитан</span>
-                      : <span className="text-gray-500">Игрок</span>
+            {slots.map(({ role, member }) => {
+              const roleInfo = getRoleInfo(role);
+              const isMe = member?.user_id === user.id;
+              const canChangeRole = isCaptain || isMe;
+
+              return (
+                <div
+                  key={role}
+                  className={`flex items-center gap-3 py-2.5 px-3 rounded-xl border transition-all ${
+                    member
+                      ? 'bg-dark-300/60 border-dark-50'
+                      : 'bg-dark-300/20 border-dashed border-dark-50'
+                  }`}
+                >
+                  {/* Avatar */}
+                  <div className="w-9 h-9 rounded-lg overflow-hidden bg-gradient-to-br from-primary-500/30 to-primary-600/30 border border-dark-50 flex items-center justify-center flex-shrink-0">
+                    {member?.avatar_url
+                      ? <img src={member.avatar_url} alt="" className="w-full h-full object-cover" />
+                      : member
+                        ? <User className="w-4 h-4 text-white/60" />
+                        : <Gamepad2 className="w-4 h-4 text-gray-700" />
                     }
                   </div>
+
+                  {/* Name + role */}
+                  <div className="flex-1 min-w-0">
+                    {member ? (
+                      <div className="text-white font-medium text-sm truncate">{member.username}</div>
+                    ) : (
+                      <div className="text-gray-600 text-sm italic">Свободный слот</div>
+                    )}
+
+                    {/* Role badge / dropdown */}
+                    {member ? (
+                      canChangeRole ? (
+                        <div className="relative inline-block mt-0.5" onClick={e => e.stopPropagation()}>
+                          <button
+                            onClick={() => setOpenRoleMenu(openRoleMenu === member.user_id ? null : member.user_id)}
+                            disabled={updatingRole === member.user_id}
+                            className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-md transition-colors ${roleInfo.color} bg-white/5 hover:bg-white/10`}
+                          >
+                            <span>{roleInfo.emoji}</span>
+                            <span>{roleInfo.label}</span>
+                            {updatingRole === member.user_id
+                              ? <div className="w-3 h-3 border border-current/30 border-t-current rounded-full animate-spin ml-0.5" />
+                              : <ChevronDown className="w-3 h-3 opacity-60" />
+                            }
+                          </button>
+
+                          {openRoleMenu === member.user_id && (
+                            <div className="absolute left-0 top-full mt-1 z-30 bg-dark-100 border border-dark-50 rounded-xl shadow-2xl shadow-black/50 py-1 min-w-[160px]">
+                              {GAME_ROLES.map(r => {
+                                const taken = members.find(m => m.role === r.value && m.user_id !== member.user_id);
+                                return (
+                                  <button
+                                    key={r.value}
+                                    onClick={() => changeRole(member.user_id, r.value)}
+                                    disabled={!!taken}
+                                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left disabled:opacity-40 ${
+                                      member.role === r.value
+                                        ? 'bg-primary-500/20 text-primary-400'
+                                        : 'text-gray-300 hover:bg-dark-200 hover:text-white'
+                                    }`}
+                                  >
+                                    <span>{r.emoji}</span>
+                                    <span className={r.color}>{r.label}</span>
+                                    {taken && <span className="ml-auto text-gray-600 text-xs truncate max-w-[60px]">{taken.username}</span>}
+                                    {member.role === r.value && <Check className="w-3.5 h-3.5 ml-auto text-primary-400" />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className={`flex items-center gap-1 text-xs font-medium mt-0.5 ${roleInfo.color}`}>
+                          <span>{roleInfo.emoji}</span>
+                          <span>{roleInfo.label}</span>
+                        </div>
+                      )
+                    ) : (
+                      <div className={`flex items-center gap-1 text-xs mt-0.5 ${roleInfo.color} opacity-40`}>
+                        <span>{roleInfo.emoji}</span>
+                        <span>{roleInfo.label}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Remove button */}
+                  {member && isCaptain && member.user_id !== user.id && (
+                    <button
+                      onClick={() => removeMember(member.user_id, member.username)}
+                      className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors flex-shrink-0"
+                      title="Удалить из команды"
+                    >
+                      <UserX className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
-                {isCaptain && m.user_id !== user.id && (
-                  <button
-                    onClick={() => removeMember(m.user_id, m.username)}
-                    className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors flex-shrink-0"
-                    title="Удалить из команды"
-                  >
-                    <UserX className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            ))}
- 
-            {/* Empty slots */}
-            {Array.from({ length: Math.max(0, 5 - members.length) }).map((_, i) => (
-              <div key={`empty-${i}`} className="flex items-center gap-3 py-2 px-3 bg-dark-300/30 rounded-xl border border-dashed border-dark-50">
-                <div className="w-9 h-9 rounded-lg border border-dashed border-dark-50 flex items-center justify-center flex-shrink-0">
-                  <Gamepad2 className="w-4 h-4 text-gray-700" />
-                </div>
-                <span className="text-gray-600 text-sm italic">Свободный слот</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
- 
+
           {/* Leave button for non-captain */}
           {!isCaptain && (
             <button
@@ -396,7 +508,7 @@ export function TeamTab({ user, showToast }: TeamTabProps) {
           )}
         </div>
       </div>
- 
+
       {/* Add players (captain only, room available) */}
       {isCaptain && members.length < 5 && (
         <div className="card space-y-4">
@@ -426,11 +538,11 @@ export function TeamTab({ user, showToast }: TeamTabProps) {
               }
             </button>
           </div>
- 
+
           {searchResults.length === 0 && searchQuery && !searchLoading && (
             <p className="text-gray-500 text-sm text-center py-4">Игроки не найдены</p>
           )}
- 
+
           {searchResults.map(p => (
             <div key={p.id} className="flex items-center gap-3 py-2.5 px-3 bg-dark-200 rounded-xl border border-dark-50">
               <div className="w-9 h-9 rounded-lg overflow-hidden bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center flex-shrink-0">
@@ -452,14 +564,14 @@ export function TeamTab({ user, showToast }: TeamTabProps) {
               </button>
             </div>
           ))}
- 
+
           <div className="flex items-start gap-2 text-gray-600 text-xs">
             <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
             <span>Игрок будет добавлен, только если он не состоит в другой команде</span>
           </div>
         </div>
       )}
- 
+
       {/* Ready banner */}
       {members.length === 5 && (
         <div className="flex items-center gap-3 p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
