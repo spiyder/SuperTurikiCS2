@@ -5,6 +5,7 @@ import {
   Clock, Check, X, Crown, UserCheck, Swords, GitBranch,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { MatchLobbyPage } from './MatchLobbyPage';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -419,6 +420,7 @@ function RegModal({
 export function TournamentPage({ tournament, user, onBack, onOpenLogin }: TournamentPageProps) {
   const [activeTab, setActiveTab] = useState<'info' | 'bracket' | 'participants' | 'rules'>('info');
   const [showRegModal, setShowRegModal] = useState(false);
+  const [showLobby, setShowLobby] = useState(false);
   const [registrations, setRegistrations] = useState<TournamentRegistration[]>([]);
   const [matches, setMatches] = useState<TournamentMatch[]>([]);
   const [myTeam, setMyTeam] = useState<Team | null>(null);
@@ -507,6 +509,15 @@ export function TournamentPage({ tournament, user, onBack, onOpenLogin }: Tourna
 
   return (
     <div className="min-h-screen bg-dark-300">
+      {/* ── Лобби матча ── */}
+      {showLobby && (
+        <MatchLobbyPage
+          tournamentName={tournament.name}
+          user={user}
+          onBack={() => setShowLobby(false)}
+        />
+      )}
+      {!showLobby && (<>
       {/* Header */}
       <div className="sticky top-0 z-50 bg-dark-100/90 backdrop-blur-md border-b border-dark-50">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-4">
@@ -520,6 +531,14 @@ export function TournamentPage({ tournament, user, onBack, onOpenLogin }: Tourna
             </div>
             <span className="font-display font-bold text-white truncate">{tournament.name}</span>
           </div>
+          {isRegistered && (
+            <button
+              onClick={() => setShowLobby(true)}
+              className="btn-primary py-2 px-4 text-sm flex-shrink-0 flex items-center gap-2"
+            >
+              <Swords className="w-4 h-4" /> Войти в лобби
+            </button>
+          )}
           {!isClosed && !isRegistered && (
             <button
               onClick={user ? () => setShowRegModal(true) : onOpenLogin}
@@ -591,8 +610,16 @@ export function TournamentPage({ tournament, user, onBack, onOpenLogin }: Tourna
               </button>
             )}
             {isRegistered && (
-              <div className="mt-6 inline-flex items-center gap-2 px-5 py-3 bg-green-500/15 border border-green-500/30 rounded-xl text-green-400 font-medium">
-                <CheckCircle className="w-5 h-5" /> Ваша команда зарегистрирована
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <div className="inline-flex items-center gap-2 px-5 py-3 bg-green-500/15 border border-green-500/30 rounded-xl text-green-400 font-medium">
+                  <CheckCircle className="w-5 h-5" /> Ваша команда зарегистрирована
+                </div>
+                <button
+                  onClick={() => setShowLobby(true)}
+                  className="btn-primary py-3 px-8 text-base flex items-center gap-2"
+                >
+                  <Swords className="w-5 h-5" /> Войти в лобби матча
+                </button>
               </div>
             )}
           </div>
@@ -767,6 +794,7 @@ export function TournamentPage({ tournament, user, onBack, onOpenLogin }: Tourna
           onSuccess={handleRegSuccess}
         />
       )}
+      </>)}
     </div>
   );
 }
