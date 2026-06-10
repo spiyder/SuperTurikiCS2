@@ -401,11 +401,11 @@ function App() {
           </div>
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { icon: Play, name: 'Twitch', desc: 'Смотри турниры вживую', color: '#9146FF' },
-              { icon: MessageCircle, name: 'Discord', desc: 'Общайся с сообществом', color: '#5865F2' },
-              { icon: Send, name: 'Telegram', desc: 'Новости и анонсы', color: '#0088cc' },
+              { icon: Play, name: 'Twitch', desc: 'Смотри турниры вживую', color: '#9146FF', href: 'https://www.twitch.tv/fatemchik' },
+              { icon: MessageCircle, name: 'Discord', desc: 'Общайся с сообществом', color: '#5865F2', href: 'https://discord.gg/mf4DhqrH5v' },
+              { icon: Send, name: 'Telegram', desc: 'Новости и анонсы', color: '#0088cc', href: 'https://t.me/superturikiCS2' },
             ].map((platform, idx) => (
-              <div key={idx} className="card flex items-center gap-4 cursor-pointer hover:border-primary-500/50 group">
+              <a key={idx} href={platform.href} target="_blank" rel="noopener noreferrer" className="card flex items-center gap-4 cursor-pointer hover:border-primary-500/50 group">
                 <div className="w-14 h-14 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110" style={{ backgroundColor: `${platform.color}20` }}>
                   <platform.icon className="w-7 h-7" style={{ color: platform.color }} />
                 </div>
@@ -413,7 +413,7 @@ function App() {
                   <h3 className="font-bold text-white group-hover:text-primary-500 transition-colors">{platform.name}</h3>
                   <p className="text-gray-400 text-sm">{platform.desc}</p>
                 </div>
-              </div>
+              </a>
             ))}
           </div>
         </div>
@@ -482,9 +482,9 @@ function App() {
           <div className="border-t border-dark-50 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-gray-500 text-sm">© 2026 SuperTurikiCS2. Все права защищены.</p>
             <div className="flex items-center gap-4">
-              <a href="#" className="text-gray-400 hover:text-primary-500 transition-colors"><Play className="w-5 h-5" /></a>
-              <a href="#" className="text-gray-400 hover:text-primary-500 transition-colors"><MessageCircle className="w-5 h-5" /></a>
-              <a href="#" className="text-gray-400 hover:text-primary-500 transition-colors"><Send className="w-5 h-5" /></a>
+              <a href="https://www.twitch.tv/fatemchik" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-primary-500 transition-colors"><Play className="w-5 h-5" /></a>
+              <a href="https://discord.gg/mf4DhqrH5v" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-primary-500 transition-colors"><MessageCircle className="w-5 h-5" /></a>
+              <a href="https://t.me/superturikiCS2" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-primary-500 transition-colors"><Send className="w-5 h-5" /></a>
             </div>
           </div>
         </div>
