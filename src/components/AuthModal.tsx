@@ -52,7 +52,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: Props) {
     setLoading('steam');
     // Edge Function URL: https://<project>.supabase.co/functions/v1/steam-auth
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-    window.location.href = `${supabaseUrl}/functions/v1/steam-auth`;
+    window.location.href = `https://pfvfjuvthywxcmzojgyd.supabase.co/functions/v1/steam-auth`;
   };
 
   // ── Google ───────────────────────────────────────────────
