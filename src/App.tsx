@@ -1,77 +1,79 @@
-// App.tsx — diff от оригинала
-// Изменения:
-//   1. Импорт TournamentPage
-//   2. Состояние selectedTournament
-//   3. Кнопка "Участвовать" открывает TournamentPage
-//   4. Условный рендер TournamentPage
-//
-// Ниже — ПОЛНЫЙ обновлённый файл App.tsx
- 
-import { useState, useEffect } from 'react';
-import {
-  Trophy, Users, Gamepad2, Zap, Shield, Target, Crown, Star,
-  ChevronRight, Menu, X, Play, Calendar, Award, TrendingUp,
-  MessageCircle, Send,
-} from 'lucide-react';
-import { supabase } from './lib/supabase';
-import { AuthModal } from './components/AuthModal';
-import { AdminPage } from './pages/AdminPage';
-import { ProfileDropdown } from './components/ProfileDropdown';
-import { ProfilePage } from './pages/ProfilePage';
-import { TournamentPage } from './pages/TournamentPage'; // ← НОВЫЙ ИМПОРТ
-import type { User as SupabaseUser } from '@supabase/supabase-js';
- 
-const ADMIN_EMAIL = 'gergenov10@gmail.com';
- 
-interface Tournament {
-  id: number;
-  name: string;
-  date: string;
-  prize: string;
-  slots_taken: number;
-  slots_total: number;
-  status: string;
-}
- 
-interface SiteStats {
-  players_count: string;
-  tournaments_count: string;
-  prize_pool: string;
-  support: string;
-}
- 
-function App() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [activeTab, setActiveTab] = useState<'player' | 'captain' | 'manager'>('player');
-  const [authOpen, setAuthOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-  const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [tournaments, setTournaments] = useState<Tournament[]>([]);
-  const [siteStats, setSiteStats] = useState<SiteStats>({
-    players_count: '10,000+', tournaments_count: '500+', prize_pool: '1M+', support: '24/7'
-  });
-  const [showProfile, setShowProfile] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null); // ← НОВОЕ
- 
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 50);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
- 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) loadUserAvatar(session.user.id);
+  // App.tsx — diff от оригинала
+  // Изменения:
+  //   1. Импорт TournamentPage
+  //   2. Состояние selectedTournament
+  //   3. Кнопка "Участвовать" открывает TournamentPage
+  //   4. Условный рендер TournamentPage
+  //
+  // Ниже — ПОЛНЫЙ обновлённый файл App.tsx
+  
+  import { useState, useEffect } from 'react';
+  import {
+    Trophy, Users, Gamepad2, Zap, Shield, Target, Crown, Star,
+    ChevronRight, Menu, X, Play, Calendar, Award, TrendingUp,
+    MessageCircle, Send,
+  } from 'lucide-react';
+  import { supabase } from './lib/supabase';
+  import { AuthModal } from './components/AuthModal';
+  import { AdminPage } from './pages/AdminPage';
+  import { ProfileDropdown } from './components/ProfileDropdown';
+  import { ProfilePage } from './pages/ProfilePage';
+  import { TournamentPage } from './pages/TournamentPage'; // ← НОВЫЙ ИМПОРТ
+  import { useSteamAuth } from './hooks/useSteamAuth';
+  import type { User as SupabaseUser } from '@supabase/supabase-js';
+  
+  const ADMIN_EMAIL = 'gergenov10@gmail.com';
+  
+  interface Tournament {
+    id: number;
+    name: string;
+    date: string;
+    prize: string;
+    slots_taken: number;
+    slots_total: number;
+    status: string;
+  }
+  
+  interface SiteStats {
+    players_count: string;
+    tournaments_count: string;
+    prize_pool: string;
+    support: string;
+  }
+  
+  function App() {
+    useSteamAuth(); // ← добавь сюда
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [scrolled, setScrolled] = useState(false);
+    const [activeTab, setActiveTab] = useState<'player' | 'captain' | 'manager'>('player');
+    const [authOpen, setAuthOpen] = useState(false);
+    const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+    const [user, setUser] = useState<SupabaseUser | null>(null);
+    const [tournaments, setTournaments] = useState<Tournament[]>([]);
+    const [siteStats, setSiteStats] = useState<SiteStats>({
+      players_count: '10,000+', tournaments_count: '500+', prize_pool: '1M+', support: '24/7'
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) loadUserAvatar(session.user.id);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
+    const [showProfile, setShowProfile] = useState(false);
+    const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+    const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null); // ← НОВОЕ
+  
+    useEffect(() => {
+      const handleScroll = () => setScrolled(window.scrollY > 50);
+      window.addEventListener('scroll', handleScroll);
+      return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+  
+    useEffect(() => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setUser(session?.user ?? null);
+        if (session?.user) loadUserAvatar(session.user.id);
+      });
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+        setUser(session?.user ?? null);
+        if (session?.user) loadUserAvatar(session.user.id);
+      });
+      return () => subscription.unsubscribe();
+    }, []);
  
   useEffect(() => {
     loadTournaments();
