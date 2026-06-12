@@ -84,36 +84,42 @@ export function ProfilePage({ user, onBack, onAvatarChange }: ProfilePageProps) 
 
   const loadProfile = async () => {
     const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+
+    const metaSteamId = user.user_metadata?.steam_id ?? null;
+    const metaAvatar  = user.user_metadata?.avatar_url ?? null;
+
     if (data) {
+      const needsUpdate: Record<string, string> = {};
+      if (!data.steam_id && metaSteamId) needsUpdate.steam_id = metaSteamId;
+      if (!data.avatar_url && metaAvatar) needsUpdate.avatar_url = metaAvatar;
+      if (Object.keys(needsUpdate).length > 0) {
+        await supabase.from('profiles').update(needsUpdate).eq('id', user.id);
+        Object.assign(data, needsUpdate);
+      }
       setProfile(data);
       setBioValue(data.bio || '');
       setUsernameValue(data.username || '');
-
-      // Автоподтяжка аватара из Steam если своего нет
-      if (!data.avatar_url && data.steam_id) {
-        syncSteamAvatar(data.steam_id);
-      }
-
-      // Подгружаем CS2 стату если есть steam_id
+      if (!data.avatar_url && data.steam_id) syncSteamAvatar(data.steam_id);
+      if (data.avatar_url) onAvatarChange(data.avatar_url);
       if (data.steam_id) loadCS2Stats(data.steam_id);
     } else {
       const username = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Игрок';
-      const steamId  = user.user_metadata?.steam_id ?? null;
-      const avatarFromSteam = user.user_metadata?.avatar_url ?? null;
-
       const { data: created } = await supabase
         .from('profiles')
-        .insert({ id: user.id, username, steam_id: steamId, avatar_url: avatarFromSteam })
+        .insert({ id: user.id, username, steam_id: metaSteamId, avatar_url: metaAvatar })
         .select().single();
-
       if (created) {
         setProfile(created);
         setBioValue('');
         setUsernameValue(created.username || '');
-        if (steamId) loadCS2Stats(steamId);
-        if (avatarFromSteam) onAvatarChange(avatarFromSteam);
+        if (metaSteamId) loadCS2Stats(metaSteamId);
+        if (metaAvatar)  onAvatarChange(metaAvatar);
       }
     }
+  };
+
+  const linkSteam = () => {
+    window.location.href = 'https://pfvfjuvthywxcmzojgyd.supabase.co/functions/v1/steam-auth';
   };
 
   // Синхронизировать аватар из Steam API
@@ -247,10 +253,17 @@ export function ProfilePage({ user, onBack, onAvatarChange }: ProfilePageProps) 
   // ─── CS2 Stats Block ─────────────────────────────────────────
   const CS2StatsBlock = () => {
     if (!profile?.steam_id) return (
-      <div className="card border-dashed border-dark-50 bg-transparent text-center py-6">
-        <Gamepad2 className="w-8 h-8 text-gray-600 mx-auto mb-2" />
-        <p className="text-gray-500 text-sm font-medium">Привяжи Steam аккаунт</p>
-        <p className="text-gray-600 text-xs mt-1">Войди через Steam чтобы видеть статистику CS2</p>
+      <div className="card border-dashed border-dark-50 bg-transparent text-center py-8">
+        <Gamepad2 className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+        <p className="text-gray-400 text-sm font-medium mb-1">Привяжи Steam аккаунт</p>
+        <p className="text-gray-600 text-xs mb-4">Чтобы видеть статистику CS2 и аватар из Steam</p>
+        <button
+          onClick={linkSteam}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all bg-[#1b2838] hover:bg-[#2a475e] border border-[#1b2838] hover:border-[#66c0f4] text-white"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.029 4.524 4.524s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.718L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.606 0 11.979 0zM7.54 18.21l-1.473-.61c.262.543.714.999 1.314 1.25 1.297.539 2.793-.076 3.332-1.375.263-.63.264-1.319.005-1.949s-.75-1.121-1.377-1.383c-.624-.26-1.29-.249-1.878-.03l1.523.63c.956.4 1.409 1.497 1.009 2.455-.397.957-1.494 1.409-2.455 1.012zm11.415-9.303c0-1.662-1.353-3.015-3.015-3.015-1.665 0-3.015 1.353-3.015 3.015 0 1.665 1.35 3.015 3.015 3.015 1.663 0 3.015-1.35 3.015-3.015zm-5.273-.005c0-1.252 1.013-2.266 2.265-2.266 1.249 0 2.266 1.014 2.266 2.266 0 1.251-1.017 2.265-2.266 2.265-1.252 0-2.265-1.014-2.265-2.265z"/></svg>
+          Привязать Steam
+        </button>
       </div>
     );
 
