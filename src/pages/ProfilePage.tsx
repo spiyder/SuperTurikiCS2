@@ -69,7 +69,7 @@ export function ProfilePage({ user, onBack, onAvatarChange }: ProfilePageProps) 
   const [statsError, setStatsError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+  const SUPABASE_URL = 'https://pfvfjuvthywxcmzojgyd.supabase.co';
 
   useEffect(() => {
     loadProfile();
