@@ -19,6 +19,7 @@
   import { ProfileDropdown } from './components/ProfileDropdown';
   import { ProfilePage } from './pages/ProfilePage';
   import { TournamentPage } from './pages/TournamentPage'; // ← НОВЫЙ ИМПОРТ
+  import { TeamPage } from './pages/TeamPage'; // ← Добавь эту строку
   import { useSteamAuth } from './hooks/useSteamAuth';
   import type { User as SupabaseUser } from '@supabase/supabase-js';
   
@@ -56,6 +57,7 @@
     const [showProfile, setShowProfile] = useState(false);
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null); // ← НОВОЕ
+    const [showTeam, setShowTeam] = useState(false); // ← Добавь эту строку
   
     useEffect(() => {
       const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -104,6 +106,7 @@
     setAvatarUrl(null);
     setShowProfile(false);
     setSelectedTournament(null); // ← НОВОЕ
+    setShowTeam(false); // ← Сбрасываем экран команды при логауте
   };
   const getUserName = () => user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Игрок';
  
@@ -119,7 +122,14 @@
       onOpenLogin={openLogin}
     />
   );
- 
+  if (showTeam && user) return (
+  <TeamPage 
+    user={user} 
+    onBack={() => setShowTeam(false)} 
+    showToast={(msg) => alert(msg)} // Можно заменить на кастомный toast, если он есть в проекте
+  />
+  );
+  
   const displayTournaments = tournaments.length > 0 ? tournaments : [
     { id: 1, name: 'LEAGUE OPEN QUALIFIER', date: '15 июня в 19:00 МСК', prize: '50,000 ₽', slots_taken: 64, slots_total: 128, status: 'open' },
     { id: 2, name: 'PRO SERIES #3', date: '20 июня в 20:00 МСК', prize: '100,000 ₽', slots_taken: 32, slots_total: 64, status: 'soon' },
@@ -166,6 +176,8 @@
               <a href="#features" className="text-gray-300 hover:text-primary-500 transition-colors">Возможности</a>
               <a href="#how-it-works" className="text-gray-300 hover:text-primary-500 transition-colors">Как это работает</a>
               <a href="#community" className="text-gray-300 hover:text-primary-500 transition-colors">Сообщество</a>
+              <button onClick={() => setShowTeam(true)} className="text-gray-300 hover:text-primary-500 transition-colors font-medium">
+              </button>
             </nav>
             <div className="hidden md:flex items-center gap-4">
               {user ? (
@@ -193,6 +205,7 @@
               <div className="pt-4 border-t border-dark-50 flex gap-4">
                 {user ? (
                   <>
+                    <button onClick={() => { setIsMenuOpen(false); setShowTeam(true); }} className="flex-1 py-2 text-gray-300 hover:text-white text-center">Моя команда</button>
                     <button onClick={() => { setIsMenuOpen(false); setShowProfile(true); }} className="flex-1 py-2 text-gray-300 hover:text-white text-center">Мой профиль</button>
                     <button onClick={handleLogout} className="flex-1 py-2 text-gray-300 hover:text-white text-center">Выйти</button>
                   </>
