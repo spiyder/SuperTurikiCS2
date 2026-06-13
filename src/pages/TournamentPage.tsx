@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { MatchLobbyPage } from './MatchLobbyPage';
+import { BracketPage } from './BracketPage';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -421,6 +422,7 @@ export function TournamentPage({ tournament, user, onBack, onOpenLogin }: Tourna
   const [activeTab, setActiveTab] = useState<'info' | 'bracket' | 'participants' | 'rules'>('info');
   const [showRegModal, setShowRegModal] = useState(false);
   const [showLobby, setShowLobby] = useState(false);
+  const [showBracket, setShowBracket] = useState(false);
   const [registrations, setRegistrations] = useState<TournamentRegistration[]>([]);
   const [matches, setMatches] = useState<TournamentMatch[]>([]);
   const [myTeam, setMyTeam] = useState<Team | null>(null);
@@ -507,9 +509,21 @@ export function TournamentPage({ tournament, user, onBack, onOpenLogin }: Tourna
     { id: 'rules', label: 'Правила' },
   ] as const;
 
+  const isAdmin = user?.email === 'gergenov10@gmail.com';
+  const userTeam = isRegistered ? 'team1' as const : null;
+
   return (
     <div className="min-h-screen bg-dark-300">
       {/* ── Лобби матча ── */}
+      {showBracket && (
+        <BracketPage
+          tournament={tournament}
+          user={user}
+          userTeam={userTeam}
+          isAdmin={isAdmin}
+          onBack={() => setShowBracket(false)}
+        />
+      )}
       {showLobby && (
         <MatchLobbyPage
           tournamentName={tournament.name}
@@ -531,6 +545,12 @@ export function TournamentPage({ tournament, user, onBack, onOpenLogin }: Tourna
             </div>
             <span className="font-display font-bold text-white truncate">{tournament.name}</span>
           </div>
+          <button
+              onClick={() => setShowBracket(true)}
+              className="py-2 px-4 text-sm flex-shrink-0 flex items-center gap-2 border border-dark-50 rounded-lg text-gray-300 hover:text-white hover:border-primary-500 transition-colors"
+            >
+              <GitBranch className="w-4 h-4" /> Сетка
+            </button>
           {isRegistered && (
             <button
               onClick={() => setShowLobby(true)}
