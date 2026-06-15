@@ -61,6 +61,8 @@ interface NewsItem {
   title: string;
   body: string;
   is_published: boolean;
+  is_pinned: boolean;
+  category: 'tournament' | 'update' | 'announce';
   created_at?: string;
   published_at?: string;
 }
@@ -877,7 +879,7 @@ function NewsTab({ showToast }: { showToast: (s: string) => void }) {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-  const blank: NewsItem = { title: '', body: '', is_published: false };
+  const blank: NewsItem = { title: '', body: '', is_published: false, is_pinned: false, category: 'announce' };
   const [form, setForm] = useState<NewsItem>(blank);
 
   useEffect(() => { load(); }, []);
@@ -890,7 +892,7 @@ function NewsTab({ showToast }: { showToast: (s: string) => void }) {
   const save = async () => {
     if (!form.title.trim() || !form.body.trim()) return;
     setLoading(true);
-    const payload = { ...form, published_at: form.is_published ? new Date().toISOString() : null };
+    const payload = { ...form, published_at: form.is_published ? new Date().toISOString() : null, category: form.category, is_pinned: form.is_pinned };
     if (editId) {
       await supabase.from('news').update(payload).eq('id', editId);
       showToast('Новость обновлена');
@@ -927,6 +929,26 @@ function NewsTab({ showToast }: { showToast: (s: string) => void }) {
           <div>
             <label className={LABEL}>Текст</label>
             <textarea value={form.body} onChange={e => setForm({ ...form, body: e.target.value })} rows={5} placeholder="Подробности, дата, условия участия…" className={INPUT + ' resize-none'} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={LABEL}>Категория</label>
+              <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value as NewsItem['category'] })} className={SELECT}>
+                <option value="announce">Анонс</option>
+                <option value="tournament">Турнир</option>
+                <option value="update">Обновление</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-2 justify-end">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <button type="button" onClick={() => setForm({ ...form, is_pinned: !form.is_pinned })}>
+                  {form.is_pinned
+                    ? <ToggleRight className="w-6 h-6 text-yellow-400" />
+                    : <ToggleLeft className="w-6 h-6 text-gray-500" />}
+                </button>
+                <span className="text-sm text-gray-300">Закрепить</span>
+              </label>
+            </div>
           </div>
           <label className="flex items-center gap-3 cursor-pointer">
             <button type="button" onClick={() => setForm({ ...form, is_published: !form.is_published })}>

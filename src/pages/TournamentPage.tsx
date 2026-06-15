@@ -7,6 +7,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { MatchLobbyPage } from './MatchLobbyPage';
 import { BracketPage } from './BracketPage';
+import { type MatchFormat, getFormatLabel, MAPS_BY_FORMAT } from '../lib/maps';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -714,9 +715,9 @@ export function TournamentPage({ tournament, user, onBack, onOpenLogin }: Tourna
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
                   { label: 'Формат', value: 'Single Elimination' },
-                  { label: 'Карты', value: 'Best of 1 / BO3 финал' },
+                  { label: 'Состав', value: getFormatLabel((tournament.format as MatchFormat) ?? '5v5') },
+                  { label: 'Карты', value: `${MAPS_BY_FORMAT[(tournament.format as MatchFormat) ?? '5v5'].length} в маппуле` },
                   { label: 'Платформа', value: 'CS2 Official' },
-                  { label: 'Регион', value: 'EU / RU' },
                 ].map(item => (
                   <div key={item.label} className="bg-dark-200 rounded-xl p-3 border border-dark-50">
                     <div className="text-gray-500 text-xs mb-1">{item.label}</div>
