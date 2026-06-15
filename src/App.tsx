@@ -58,8 +58,8 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
     const [showProfile, setShowProfile] = useState(false);
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
-  const [showNews, setShowNews] = useState(false);
-  const [showFaq, setShowFaq] = useState(false); // ← НОВОЕ
+    const [showNews, setShowNews] = useState(false);
+    const [showFaq, setShowFaq] = useState(false);
   
     useEffect(() => {
       const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -112,9 +112,9 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
   const getUserName = () => user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Игрок';
  
   if (isAdmin) return <AdminPage onLogout={handleLogout} />;
+  if (showNews) return <NewsPage onBack={() => setShowNews(false)} />;
+  if (showFaq)  return <FaqPage  onBack={() => setShowFaq(false)}  />;
   if (showProfile && user) return <ProfilePage user={user} onBack={() => setShowProfile(false)} onAvatarChange={(url) => setAvatarUrl(url)} />;
- 
-  // ← НОВОЕ: показ страницы турнира
   if (selectedTournament) return (
     <TournamentPage
       tournament={selectedTournament}
@@ -168,6 +168,8 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
             <nav className="hidden md:flex items-center gap-8">
               <a href="#tournaments" className="text-gray-300 hover:text-primary-500 transition-colors">Турниры</a>
               <a href="#features" className="text-gray-300 hover:text-primary-500 transition-colors">Возможности</a>
+              <button onClick={() => setShowNews(true)} className="text-gray-300 hover:text-primary-500 transition-colors">Новости</button>
+              <button onClick={() => setShowFaq(true)} className="text-gray-300 hover:text-primary-500 transition-colors">FAQ</button>
               <a href="#how-it-works" className="text-gray-300 hover:text-primary-500 transition-colors">Как это работает</a>
               <a href="#community" className="text-gray-300 hover:text-primary-500 transition-colors">Сообщество</a>
             </nav>
@@ -192,6 +194,8 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
             <div className="px-4 py-4 space-y-4">
               <a href="#tournaments" className="block text-gray-300 hover:text-primary-500">Турниры</a>
               <a href="#features" className="block text-gray-300 hover:text-primary-500">Возможности</a>
+              <button onClick={() => { setShowNews(true); setIsMenuOpen(false); }} className="block text-gray-300 hover:text-primary-500">Новости</button>
+              <button onClick={() => { setShowFaq(true); setIsMenuOpen(false); }} className="block text-gray-300 hover:text-primary-500">FAQ</button>
               <a href="#how-it-works" className="block text-gray-300 hover:text-primary-500">Как это работает</a>
               <a href="#community" className="block text-gray-300 hover:text-primary-500">Сообщество</a>
               <div className="pt-4 border-t border-dark-50 flex gap-4">
