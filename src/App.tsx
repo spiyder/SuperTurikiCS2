@@ -20,6 +20,7 @@
   import { ProfilePage } from './pages/ProfilePage';
   import { TournamentPage } from './pages/TournamentPage';
 import { NewsPage } from './pages/NewsPage';
+import { LfgPage } from './pages/LfgPage';
 import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
   import { useSteamAuth } from './hooks/useSteamAuth';
   import type { User as SupabaseUser } from '@supabase/supabase-js';
@@ -60,6 +61,7 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
     const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
     const [showNews, setShowNews] = useState(false);
     const [showFaq, setShowFaq] = useState(false);
+    const [showLfg, setShowLfg] = useState(false);
   
     useEffect(() => {
       const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -114,6 +116,7 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
   if (isAdmin) return <AdminPage onLogout={handleLogout} />;
   if (showNews) return <NewsPage onBack={() => setShowNews(false)} />;
   if (showFaq)  return <FaqPage  onBack={() => setShowFaq(false)}  />;
+  if (showLfg)  return <LfgPage  user={user} onBack={() => setShowLfg(false)} onOpenLogin={openLogin} />;
   if (showProfile && user) return <ProfilePage user={user} onBack={() => setShowProfile(false)} onAvatarChange={(url) => setAvatarUrl(url)} />;
   if (selectedTournament) return (
     <TournamentPage
@@ -169,6 +172,7 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
               <a href="#tournaments" className="text-gray-300 hover:text-primary-500 transition-colors">Турниры</a>
               <a href="#features" className="text-gray-300 hover:text-primary-500 transition-colors">Возможности</a>
               <button onClick={() => setShowNews(true)} className="text-gray-300 hover:text-primary-500 transition-colors">Новости</button>
+              <button onClick={() => setShowLfg(true)} className="text-gray-300 hover:text-primary-500 transition-colors">LFG</button>
               <button onClick={() => setShowFaq(true)} className="text-gray-300 hover:text-primary-500 transition-colors">FAQ</button>
               <a href="#how-it-works" className="text-gray-300 hover:text-primary-500 transition-colors">Как это работает</a>
               <a href="#community" className="text-gray-300 hover:text-primary-500 transition-colors">Сообщество</a>
@@ -195,6 +199,7 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
               <a href="#tournaments" className="block text-gray-300 hover:text-primary-500">Турниры</a>
               <a href="#features" className="block text-gray-300 hover:text-primary-500">Возможности</a>
               <button onClick={() => { setShowNews(true); setIsMenuOpen(false); }} className="block text-gray-300 hover:text-primary-500">Новости</button>
+              <button onClick={() => { setShowLfg(true); setIsMenuOpen(false); }} className="block text-gray-300 hover:text-primary-500">LFG</button>
               <button onClick={() => { setShowFaq(true); setIsMenuOpen(false); }} className="block text-gray-300 hover:text-primary-500">FAQ</button>
               <a href="#how-it-works" className="block text-gray-300 hover:text-primary-500">Как это работает</a>
               <a href="#community" className="block text-gray-300 hover:text-primary-500">Сообщество</a>
