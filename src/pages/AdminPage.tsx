@@ -13,7 +13,6 @@ import {
   DollarSign, Flag, Edit3, ToggleLeft, ToggleRight, UserCog,
   Play, Pause, StopCircle, Calendar, Hash, Loader2,
 } from 'lucide-react';
-import { type MatchFormat, getFormatLabel } from '../lib/maps';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -40,7 +39,6 @@ interface Tournament {
   entry_fee?: number;
   prize_pool?: number;
   description?: string;
-  format?: MatchFormat;
 }
 
 interface LobbyMatch {
@@ -56,7 +54,6 @@ interface LobbyMatch {
   score2: number;
   winner_name: string | null;
   created_at: string;
-  format?: MatchFormat;
 }
 
 interface NewsItem {
@@ -64,6 +61,8 @@ interface NewsItem {
   title: string;
   body: string;
   is_published: boolean;
+  is_pinned: boolean;
+  category: 'tournament' | 'update' | 'announce';
   created_at?: string;
   published_at?: string;
 }
@@ -372,7 +371,7 @@ function TournamentsTab({ showToast }: { showToast: (s: string) => void }) {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-  const blank: Tournament = { name: '', date: '', prize: '', slots_taken: 0, slots_total: 16, status: 'open', entry_fee: 0, prize_pool: 0, description: '', format: '5v5' };
+  const blank: Tournament = { name: '', date: '', prize: '', slots_taken: 0, slots_total: 16, status: 'open', entry_fee: 0, prize_pool: 0, description: '' };
   const [form, setForm] = useState<Tournament>(blank);
 
   useEffect(() => { load(); }, []);
@@ -436,14 +435,6 @@ function TournamentsTab({ showToast }: { showToast: (s: string) => void }) {
             </select>
           </div>
           <div>
-            <label className={LABEL}>Формат</label>
-            <select value={form.format ?? '5v5'} onChange={e => setForm({ ...form, format: e.target.value as MatchFormat })} className={SELECT}>
-              <option value="1v1">1v1 (Duel)</option>
-              <option value="2v2">2v2 (Wingman)</option>
-              <option value="5v5">5v5 (Competitive)</option>
-            </select>
-          </div>
-          <div>
             <label className={LABEL}>Призовой фонд (текст)</label>
             <input value={form.prize} onChange={e => setForm({ ...form, prize: e.target.value })} placeholder="50 000 ₽" className={INPUT} />
           </div>
@@ -487,9 +478,6 @@ function TournamentsTab({ showToast }: { showToast: (s: string) => void }) {
                 <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusColor[t.status]}`}>
                   {statusLabel[t.status]}
                 </span>
-                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-dark-50 text-gray-300">
-                  {getFormatLabel(t.format ?? '5v5')}
-                </span>
                 {(t.entry_fee ?? 0) > 0 && (
                   <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-400">
                     {t.entry_fee} ₽ взнос
@@ -521,7 +509,7 @@ function MatchesTab({ showToast, adminRole }: { showToast: (s: string) => void; 
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<'all' | LobbyMatch['phase']>('all');
 
-  const blank = { tournament_id: '', team1_name: '', team2_name: '', round: 'Round 1', scheduled_at: '', referee_id: '', format: '5v5' as MatchFormat };
+  const blank = { tournament_id: '', team1_name: '', team2_name: '', round: 'Round 1', scheduled_at: '', referee_id: '' };
   const [form, setForm] = useState(blank);
 
   useEffect(() => { load(); }, []);
@@ -529,7 +517,7 @@ function MatchesTab({ showToast, adminRole }: { showToast: (s: string) => void; 
   const load = async () => {
     const [m, t, r] = await Promise.all([
       supabase.from('lobby_matches').select('*').order('created_at', { ascending: false }),
-      supabase.from('tournaments').select('id, name, format'),
+      supabase.from('tournaments').select('id, name'),
       supabase.from('profiles').select('id, username, email').in('role', ['referee', 'admin']),
     ]);
     if (m.data) setMatches(m.data);
@@ -550,7 +538,6 @@ function MatchesTab({ showToast, adminRole }: { showToast: (s: string) => void; 
       referee_id: form.referee_id || null,
       created_by: user?.id,
       phase: 'scheduled',
-      format: form.format,
     });
     setForm(blank);
     await load(); setLoading(false); showToast('Матч создан');
@@ -615,21 +602,9 @@ function MatchesTab({ showToast, adminRole }: { showToast: (s: string) => void; 
             </div>
             <div>
               <label className={LABEL}>Турнир</label>
-              <select value={form.tournament_id} onChange={e => {
-                const tid = e.target.value;
-                const t = tournaments.find(tt => String(tt.id) === tid);
-                setForm({ ...form, tournament_id: tid, format: (t?.format as MatchFormat) ?? form.format });
-              }} className={SELECT}>
+              <select value={form.tournament_id} onChange={e => setForm({ ...form, tournament_id: e.target.value })} className={SELECT}>
                 <option value="">— без турнира —</option>
                 {tournaments.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className={LABEL}>Формат матча</label>
-              <select value={form.format} onChange={e => setForm({ ...form, format: e.target.value as MatchFormat })} className={SELECT}>
-                <option value="1v1">1v1 (Duel)</option>
-                <option value="2v2">2v2 (Wingman)</option>
-                <option value="5v5">5v5 (Competitive)</option>
               </select>
             </div>
             <div>
@@ -718,9 +693,6 @@ function MatchCard({ match: m, onPhase, onScore, onDelete, onCopyLink, nextPhase
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${PHASE_META[m.phase].color}`}>
               {PHASE_META[m.phase].label}
-            </span>
-            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-dark-50 text-gray-300">
-              {getFormatLabel((m.format as MatchFormat) ?? '5v5')}
             </span>
             <span className="text-gray-500 text-xs">{m.round}</span>
             {m.scheduled_at && (
@@ -907,7 +879,7 @@ function NewsTab({ showToast }: { showToast: (s: string) => void }) {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-  const blank: NewsItem = { title: '', body: '', is_published: false };
+  const blank: NewsItem = { title: '', body: '', is_published: false, is_pinned: false, category: 'announce' };
   const [form, setForm] = useState<NewsItem>(blank);
 
   useEffect(() => { load(); }, []);
@@ -920,7 +892,7 @@ function NewsTab({ showToast }: { showToast: (s: string) => void }) {
   const save = async () => {
     if (!form.title.trim() || !form.body.trim()) return;
     setLoading(true);
-    const payload = { ...form, published_at: form.is_published ? new Date().toISOString() : null };
+    const payload = { ...form, published_at: form.is_published ? new Date().toISOString() : null, category: form.category, is_pinned: form.is_pinned };
     if (editId) {
       await supabase.from('news').update(payload).eq('id', editId);
       showToast('Новость обновлена');
@@ -957,6 +929,26 @@ function NewsTab({ showToast }: { showToast: (s: string) => void }) {
           <div>
             <label className={LABEL}>Текст</label>
             <textarea value={form.body} onChange={e => setForm({ ...form, body: e.target.value })} rows={5} placeholder="Подробности, дата, условия участия…" className={INPUT + ' resize-none'} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={LABEL}>Категория</label>
+              <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value as NewsItem['category'] })} className={SELECT}>
+                <option value="announce">Анонс</option>
+                <option value="tournament">Турнир</option>
+                <option value="update">Обновление</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-2 justify-end">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <button type="button" onClick={() => setForm({ ...form, is_pinned: !form.is_pinned })}>
+                  {form.is_pinned
+                    ? <ToggleRight className="w-6 h-6 text-yellow-400" />
+                    : <ToggleLeft className="w-6 h-6 text-gray-500" />}
+                </button>
+                <span className="text-sm text-gray-300">Закрепить</span>
+              </label>
+            </div>
           </div>
           <label className="flex items-center gap-3 cursor-pointer">
             <button type="button" onClick={() => setForm({ ...form, is_published: !form.is_published })}>
