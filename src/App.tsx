@@ -479,9 +479,11 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
             <div>
               <h4 className="text-white font-semibold mb-4">Поддержка</h4>
               <ul className="space-y-2">
-                {['FAQ', 'Правила', 'Контакты', 'Баг-репорт'].map(item => (
-                  <li key={item}><a href="#" className="text-gray-400 hover:text-primary-500 transition-colors">{item}</a></li>
-                ))}
+                <li><button onClick={() => setShowNews(true)} className="text-gray-400 hover:text-primary-500 transition-colors">Новости</button></li>
+                <li><button onClick={() => setShowFaq(true)} className="text-gray-400 hover:text-primary-500 transition-colors">FAQ</button></li>
+                <li><a href="#" className="text-gray-400 hover:text-primary-500 transition-colors">Правила</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-primary-500 transition-colors">Контакты</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-primary-500 transition-colors">Баг-репорт</a></li>
               </ul>
             </div>
           </div>
