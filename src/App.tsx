@@ -22,6 +22,7 @@
 import { NewsPage } from './pages/NewsPage';
 import { LfgPage } from './pages/LfgPage';
 import { TeamPage } from './pages/TeamPage';
+import { NotificationsBell } from './components/NotificationsBell';
 import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
   import { useSteamAuth } from './hooks/useSteamAuth';
   import type { User as SupabaseUser } from '@supabase/supabase-js';
@@ -171,7 +172,7 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
                 Super<span className="text-primary-500">Turiki</span>CS2
               </span>
             </div>
-            <nav className="hidden md:flex items-center gap-8">
+            <nav className="hidden md:flex items-center gap-5 flex-wrap">
               <a href="#tournaments" className="text-gray-300 hover:text-primary-500 transition-colors">Турниры</a>
               <a href="#features" className="text-gray-300 hover:text-primary-500 transition-colors">Возможности</a>
               <button onClick={() => setShowNews(true)} className="text-gray-300 hover:text-primary-500 transition-colors">Новости</button>
@@ -183,7 +184,8 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
             </nav>
             <div className="hidden md:flex items-center gap-4">
               {user ? (
-                <ProfileDropdown user={user} avatarUrl={avatarUrl} onLogout={handleLogout} onOpenProfile={() => setShowProfile(true)} />
+                {user && <NotificationsBell user={user} onTeamJoined={() => setShowTeam(false)} />}
+              <ProfileDropdown user={user} avatarUrl={avatarUrl} onLogout={handleLogout} onOpenProfile={() => setShowProfile(true)} />
               ) : (
                 <>
                   <button onClick={openLogin} className="text-gray-300 hover:text-white transition-colors">Войти</button>

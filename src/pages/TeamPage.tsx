@@ -74,7 +74,7 @@ export function TeamPage({ user, teamId: propTeamId, onBack, showToast }: Props)
   const [tagVal, setTagVal]             = useState('');
   const [descVal, setDescVal]           = useState('');
   const [uploading, setUploading]       = useState(false);
-  const [inviteEmail, setInviteEmail]   = useState('');
+  const [inviteUsername, setInviteUsername] = useState('');
   const [inviting, setInviting]         = useState(false);
   const [copied, setCopied]             = useState(false);
   const [creating, setCreating]         = useState(false);
@@ -86,6 +86,7 @@ export function TeamPage({ user, teamId: propTeamId, onBack, showToast }: Props)
   const [createDesc, setCreateDesc]     = useState('');
 
   const isCaptain = team?.captain_id === user.id;
+  const myName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Капитан';
   const isMyTeam  = !propTeamId || propTeamId === myTeamId;
 
   useEffect(() => { load(); }, [propTeamId]);
@@ -187,18 +188,49 @@ export function TeamPage({ user, teamId: propTeamId, onBack, showToast }: Props)
 
   // ── Invite ──────────────────────────────────────────────
   const inviteMember = async () => {
-    if (!inviteEmail.trim() || !team) return;
+    if (!inviteUsername.trim() || !team) return;
     setInviting(true);
-    const { data: profile } = await supabase.from('profiles').select('id, username').eq('email', inviteEmail.trim()).maybeSingle();
-    if (!profile) { showToast('Игрок не найден'); setInviting(false); return; }
 
-    const { data: existing } = await supabase.from('team_members').select('id').eq('user_id', profile.id).maybeSingle();
-    if (existing) { showToast('Игрок уже в команде'); setInviting(false); return; }
+    // Ищем по нику
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id, username')
+      .ilike('username', inviteUsername.trim())
+      .maybeSingle();
+    if (!profile) { showToast('Игрок с таким ником не найден'); setInviting(false); return; }
+    if (profile.id === user.id) { showToast('Нельзя пригласить себя'); setInviting(false); return; }
 
-    await supabase.from('team_members').insert({ team_id: team.id, user_id: profile.id, role: 'member' });
-    await supabase.from('profiles').update({ team_id: team.id }).eq('id', profile.id);
-    setInviteEmail('');
-    await load(); showToast(`${profile.username} добавлен в команду!`);
+    // Проверяем что уже не в команде
+    const { data: existingMember } = await supabase.from('team_members').select('id').eq('user_id', profile.id).maybeSingle();
+    if (existingMember) { showToast('Игрок уже состоит в команде'); setInviting(false); return; }
+
+    // Проверяем что нет активного приглашения
+    const { data: existingInvite } = await supabase.from('team_invites')
+      .select('id').eq('team_id', team.id).eq('user_id', profile.id).eq('status', 'pending').maybeSingle();
+    if (existingInvite) { showToast('Приглашение уже отправлено'); setInviting(false); return; }
+
+    // Создаём приглашение + уведомление
+    await supabase.from('team_invites').insert({
+      team_id: team.id,
+      team_name: team.name,
+      team_tag: team.tag,
+      user_id: profile.id,
+      invited_by: user.id,
+      invited_by_name: myName,
+      status: 'pending',
+    });
+
+    await supabase.from('notifications').insert({
+      user_id: profile.id,
+      type: 'team_invite',
+      title: `Приглашение в команду [${team.tag}] ${team.name}`,
+      body: `${myName} приглашает тебя вступить в команду`,
+      meta: JSON.stringify({ team_id: team.id, team_name: team.name }),
+      is_read: false,
+    });
+
+    setInviteUsername('');
+    showToast(`Приглашение отправлено игроку ${profile.username}!`);
     setInviting(false);
   };
 
@@ -467,11 +499,11 @@ export function TeamPage({ user, teamId: propTeamId, onBack, showToast }: Props)
                   <UserPlus className="w-4 h-4 text-primary-500" /> Добавить игрока
                 </h3>
                 <div className="flex gap-3">
-                  <input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
+                  <input value={inviteUsername} onChange={e => setInviteUsername(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && inviteMember()}
-                    placeholder="Email игрока"
+                    placeholder="Ник игрока"
                     className="flex-1 bg-dark-300 border border-dark-50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary-500" />
-                  <button onClick={inviteMember} disabled={inviting || !inviteEmail}
+                  <button onClick={inviteMember} disabled={inviting || !inviteUsername}
                     className="btn-primary text-sm py-2 px-4 flex items-center gap-1.5 disabled:opacity-50">
                     {inviting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
                     Добавить
