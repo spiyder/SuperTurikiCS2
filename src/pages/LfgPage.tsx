@@ -26,7 +26,7 @@ interface LfgPost {
   format: Format;
   play_time: PlayTime;
   comment: string;
-  discord: string;
+  telegram: string;
   created_at: string;
   is_active: boolean;
 }
@@ -73,7 +73,7 @@ export function LfgPage({ user, onBack, onOpenLogin }: Props) {
   const [format, setFormat]     = useState<Format>('5v5');
   const [playTime, setPlayTime] = useState<PlayTime>('Вечер');
   const [comment, setComment]   = useState('');
-  const [discord, setDiscord]   = useState('');
+  const [telegram, setTelegram] = useState('');
 
   const myName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Игрок';
 
@@ -113,7 +113,7 @@ export function LfgPage({ user, onBack, onOpenLogin }: Props) {
       steam_id:   profile?.steam_id ?? null,
       role, format, play_time: playTime,
       comment: comment.trim(),
-      discord: discord.trim(),
+      discord: telegram.trim() ? '@' + telegram.trim() : '',
       is_active: true,
     }).select().single();
 
@@ -258,12 +258,15 @@ export function LfgPage({ user, onBack, onOpenLogin }: Props) {
               </div>
             </div>
 
-            {/* Discord */}
+            {/* Telegram */}
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Discord (необязательно)</p>
-              <input value={discord} onChange={e => setDiscord(e.target.value)}
-                placeholder="username#0000 или ссылка"
-                className="w-full bg-dark-300 border border-dark-50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary-500 placeholder-gray-600" />
+              <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Telegram (необязательно)</p>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">@</span>
+                <input value={telegram} onChange={e => setTelegram(e.target.value.replace('@',''))}
+                  placeholder="username"
+                  className="w-full bg-dark-300 border border-dark-50 rounded-lg pl-7 pr-3 py-2 text-white text-sm focus:outline-none focus:border-primary-500 placeholder-gray-600" />
+              </div>
             </div>
 
             {/* Comment */}
@@ -388,16 +391,16 @@ export function LfgPage({ user, onBack, onOpenLogin }: Props) {
                     {post.discord ? (
                       <div className="flex items-center gap-1.5 text-xs text-gray-500">
                         <MessageSquare className="w-3.5 h-3.5" />
-                        <span className="font-mono">{post.discord}</span>
+                        <a href={`https://t.me/${post.discord.replace('@','')}`} target="_blank" rel="noopener noreferrer" className="font-mono text-blue-400 hover:text-blue-300 transition-colors">{post.discord}</a>
                       </div>
                     ) : (
                       <div />
                     )}
                     {!isMe && user && (
                       <button
-                        onClick={() => { navigator.clipboard.writeText(post.discord || post.username); }}
+                        onClick={() => { if(post.discord) window.open(`https://t.me/${post.discord.replace('@','')}`, '_blank'); }}
                         className="text-xs px-3 py-1.5 bg-primary-500/20 hover:bg-primary-500/30 text-primary-400 rounded-lg transition-colors flex items-center gap-1">
-                        <User className="w-3 h-3" /> Написать
+                        <MessageSquare className="w-3 h-3" /> Написать в TG
                       </button>
                     )}
                     {isMe && (
