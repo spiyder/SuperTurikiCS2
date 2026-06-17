@@ -11,7 +11,7 @@ import {
   ChevronRight, TrendingUp, Shield, Clock, CheckCircle2,
   RefreshCw, Eye, Ban, Crown, Search, Filter, Bell,
   DollarSign, Flag, Edit3, ToggleLeft, ToggleRight, UserCog,
-  Play, Pause, StopCircle, Calendar, Hash, Loader2,
+  Play, Pause, StopCircle, Calendar, Hash, Loader2, Bug,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -112,6 +112,7 @@ type Tab =
   | 'news'
   | 'finance'
   | 'reports'
+  | 'bugs'
   | 'settings';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -146,6 +147,7 @@ const ALL_TABS: { id: Tab; label: string; icon: React.FC<{ className?: string }>
   { id: 'news',        label: 'Новости',        icon: Newspaper,       adminOnly: true },
   { id: 'finance',     label: 'Финансы',        icon: Wallet,          adminOnly: true },
   { id: 'reports',     label: 'Жалобы',         icon: AlertTriangle,   adminOnly: true },
+  { id: 'bugs',        label: 'Баг-репорты',    icon: Bug,             adminOnly: true },
   { id: 'settings',    label: 'Настройки',      icon: Settings,        adminOnly: true },
 ];
 
@@ -245,6 +247,7 @@ export function AdminPage({ onLogout, adminRole = 'admin' }: { onLogout: () => v
           {tab === 'news'        && <NewsTab showToast={showToast} />}
           {tab === 'finance'     && <FinanceTab showToast={showToast} />}
           {tab === 'reports'     && <ReportsTab showToast={showToast} />}
+          {tab === 'bugs'        && <BugsTab showToast={showToast} />}
           {tab === 'settings'    && <SettingsTab showToast={showToast} />}
         </main>
       </div>
@@ -1316,6 +1319,102 @@ function SettingsTab({ showToast }: { showToast: (s: string) => void }) {
           ))}
         </div>
         <p className="text-gray-600 text-xs mt-3">Убедись что все таблицы созданы по migration.sql и Realtime включён для lobby_*</p>
+      </div>
+    </div>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// BUG REPORTS
+// ═══════════════════════════════════════════════════════════════════
+
+interface BugReport {
+  id: number;
+  username: string;
+  title: string;
+  description: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  page_url: string;
+  status: 'open' | 'in_progress' | 'resolved' | 'wontfix';
+  admin_note: string | null;
+  created_at: string;
+}
+
+const SEVERITY_META: Record<BugReport['severity'], { label: string; color: string }> = {
+  low:      { label: 'Низкий',      color: 'bg-gray-500/20 text-gray-400' },
+  medium:   { label: 'Средний',     color: 'bg-yellow-500/20 text-yellow-400' },
+  high:     { label: 'Серьёзный',   color: 'bg-orange-500/20 text-orange-400' },
+  critical: { label: 'Критический', color: 'bg-red-500/20 text-red-400' },
+};
+
+const BUG_STATUS_META: Record<BugReport['status'], { label: string; color: string }> = {
+  open:        { label: 'Открыт',      color: 'bg-red-500/20 text-red-400' },
+  in_progress: { label: 'В работе',    color: 'bg-yellow-500/20 text-yellow-400' },
+  resolved:    { label: 'Исправлено',  color: 'bg-green-500/20 text-green-400' },
+  wontfix:     { label: 'Не будет исправлено', color: 'bg-gray-500/20 text-gray-500' },
+};
+
+function BugsTab({ showToast }: { showToast: (s: string) => void }) {
+  const [bugs, setBugs] = useState<BugReport[]>([]);
+  const [filter, setFilter] = useState<'all' | BugReport['status']>('all');
+
+  useEffect(() => { load(); }, []);
+
+  const load = async () => {
+    const { data } = await supabase.from('bug_reports').select('*').order('created_at', { ascending: false });
+    if (data) setBugs(data);
+  };
+
+  const updateStatus = async (id: number, status: BugReport['status']) => {
+    await supabase.from('bug_reports').update({ status }).eq('id', id);
+    await load(); showToast('Статус обновлён');
+  };
+
+  const filtered = filter === 'all' ? bugs : bugs.filter(b => b.status === filter);
+
+  return (
+    <div className="space-y-5 max-w-4xl">
+      <div className="flex gap-2 flex-wrap">
+        {(['all', 'open', 'in_progress', 'resolved', 'wontfix'] as const).map(f => (
+          <button key={f} onClick={() => setFilter(f)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              filter === f ? 'bg-primary-500 text-white' : 'bg-dark-100 border border-dark-50 text-gray-400 hover:text-white'
+            }`}>
+            {f === 'all' ? `Все (${bugs.length})` : `${BUG_STATUS_META[f as BugReport['status']].label} (${bugs.filter(b => b.status === f).length})`}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-3">
+        {filtered.map(b => (
+          <div key={b.id} className={`bg-dark-100 border rounded-xl p-5 ${b.status === 'open' ? 'border-red-500/30' : 'border-dark-50'}`}>
+            <div className="flex items-start justify-between gap-4 mb-2">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${SEVERITY_META[b.severity].color}`}>
+                    {SEVERITY_META[b.severity].label}
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${BUG_STATUS_META[b.status].color}`}>
+                    {BUG_STATUS_META[b.status].label}
+                  </span>
+                  <span className="text-gray-600 text-xs">{new Date(b.created_at).toLocaleDateString('ru')}</span>
+                </div>
+                <p className="font-bold text-white">{b.title}</p>
+                <p className="text-gray-500 text-xs mt-0.5">от {b.username} {b.page_url && `· ${b.page_url}`}</p>
+                <p className="text-gray-400 text-sm mt-2">{b.description}</p>
+              </div>
+              <select value={b.status} onChange={e => updateStatus(b.id, e.target.value as BugReport['status'])}
+                className="text-xs px-2 py-1.5 bg-dark-400 border border-dark-50 rounded-lg text-white shrink-0">
+                <option value="open">Открыт</option>
+                <option value="in_progress">В работе</option>
+                <option value="resolved">Исправлено</option>
+                <option value="wontfix">Не будет исправлено</option>
+              </select>
+            </div>
+          </div>
+        ))}
+        {filtered.length === 0 && <Empty text="Баг-репортов нет" />}
       </div>
     </div>
   );
