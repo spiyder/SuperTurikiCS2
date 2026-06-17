@@ -99,9 +99,9 @@ export function TeamPage({ user, teamId: propTeamId, onBack, showToast }: Props)
 
     if (!targetId) { setLoading(false); return; }
 
-    const [teamRes, membersRes, histRes] = await Promise.all([
+    const [teamRes, membersRawRes, histRes] = await Promise.all([
       supabase.from('teams').select('*').eq('id', targetId).single(),
-      supabase.from('team_members').select('*, profile:profiles(username, avatar_url, steam_id)').eq('team_id', targetId),
+      supabase.from('team_members').select('*').eq('team_id', targetId),
       supabase.from('lobby_matches')
         .select('id, team1_name, team2_name, score1, score2, winner_name, phase, created_at, round')
         .or(`team1_name.eq.${team?.name ?? ''},team2_name.eq.${team?.name ?? ''}`)
@@ -116,8 +116,26 @@ export function TeamPage({ user, teamId: propTeamId, onBack, showToast }: Props)
       setTagVal(teamRes.data.tag);
       setDescVal(teamRes.data.description ?? '');
     }
-    if (membersRes.data) setMembers(membersRes.data as TeamMember[]);
-    if (histRes.data)    setHistory(histRes.data);
+
+    // Подгружаем профили отдельным запросом (нет прямого FK team_members → profiles)
+    if (membersRawRes.data && membersRawRes.data.length > 0) {
+      const userIds = membersRawRes.data.map((m: any) => m.user_id);
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url, steam_id')
+        .in('id', userIds);
+
+      const profileMap = new Map((profilesData ?? []).map((p: any) => [p.id, p]));
+      const merged = membersRawRes.data.map((m: any) => ({
+        ...m,
+        profile: profileMap.get(m.user_id) ?? null,
+      }));
+      setMembers(merged as TeamMember[]);
+    } else {
+      setMembers([]);
+    }
+
+    if (histRes.data) setHistory(histRes.data);
     setLoading(false);
   };
 
