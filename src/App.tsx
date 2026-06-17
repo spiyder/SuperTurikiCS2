@@ -22,6 +22,9 @@
 import { NewsPage } from './pages/NewsPage';
 import { LfgPage } from './pages/LfgPage';
 import { TeamPage } from './pages/TeamPage';
+import { BugReportPage } from './pages/BugReportPage';
+import { RulesPage } from './pages/RulesPage';
+import { PrivacyPage } from './pages/PrivacyPage';
 import { NotificationsBell } from './components/NotificationsBell';
 import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
   import { useSteamAuth } from './hooks/useSteamAuth';
@@ -65,6 +68,9 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
     const [showFaq, setShowFaq] = useState(false);
     const [showLfg, setShowLfg] = useState(false);
     const [showTeam, setShowTeam] = useState(false);
+    const [showBugReport, setShowBugReport] = useState(false);
+    const [showRules, setShowRules] = useState(false);
+    const [showPrivacy, setShowPrivacy] = useState(false);
   
     useEffect(() => {
       const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -121,6 +127,9 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
   if (showFaq)  return <FaqPage  onBack={() => setShowFaq(false)}  />;
   if (showLfg)  return <LfgPage  user={user} onBack={() => setShowLfg(false)} onOpenLogin={openLogin} />;
   if (showTeam && user) return <TeamPage user={user} onBack={() => setShowTeam(false)} showToast={(msg) => console.log(msg)} />;
+  if (showBugReport) return <BugReportPage user={user} onBack={() => setShowBugReport(false)} onOpenLogin={openLogin} />;
+  if (showRules)   return <RulesPage   onBack={() => setShowRules(false)} />;
+  if (showPrivacy) return <PrivacyPage onBack={() => setShowPrivacy(false)} />;
   if (showProfile && user) return <ProfilePage user={user} onBack={() => setShowProfile(false)} onAvatarChange={(url) => setAvatarUrl(url)} />;
   if (selectedTournament) return (
     <TournamentPage
@@ -184,10 +193,8 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
             </nav>
             <div className="hidden md:flex items-center gap-4">
               {user ? (
-                <>
-                  <NotificationsBell user={user} onTeamJoined={() => setShowTeam(false)} />
-                  <ProfileDropdown user={user} avatarUrl={avatarUrl} onLogout={handleLogout} onOpenProfile={() => setShowProfile(true)} />
-                </>
+                {user && <NotificationsBell user={user} onTeamJoined={() => setShowTeam(false)} />}
+              <ProfileDropdown user={user} avatarUrl={avatarUrl} onLogout={handleLogout} onOpenProfile={() => setShowProfile(true)} />
               ) : (
                 <>
                   <button onClick={openLogin} className="text-gray-300 hover:text-white transition-colors">Войти</button>
@@ -499,9 +506,9 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
               <ul className="space-y-2">
                 <li><button onClick={() => setShowNews(true)} className="text-gray-400 hover:text-primary-500 transition-colors">Новости</button></li>
                 <li><button onClick={() => setShowFaq(true)} className="text-gray-400 hover:text-primary-500 transition-colors">FAQ</button></li>
-                <li><a href="#" className="text-gray-400 hover:text-primary-500 transition-colors">Правила</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-primary-500 transition-colors">Контакты</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-primary-500 transition-colors">Баг-репорт</a></li>
+                <li><button onClick={() => setShowRules(true)} className="text-gray-400 hover:text-primary-500 transition-colors">Правила</button></li>
+                <li><button onClick={() => setShowPrivacy(true)} className="text-gray-400 hover:text-primary-500 transition-colors">Конфиденциальность</button></li>
+                <li><button onClick={() => setShowBugReport(true)} className="text-gray-400 hover:text-primary-500 transition-colors">Баг-репорт</button></li>
               </ul>
             </div>
           </div>
