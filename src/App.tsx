@@ -25,6 +25,7 @@ import { TeamPage } from './pages/TeamPage';
 import { BugReportPage } from './pages/BugReportPage';
 import { RulesPage } from './pages/RulesPage';
 import { PrivacyPage } from './pages/PrivacyPage';
+import { SupportChat } from './components/SupportChat';
 import { NotificationsBell } from './components/NotificationsBell';
 import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
   import { useSteamAuth } from './hooks/useSteamAuth';
@@ -523,11 +524,7 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
         </div>
       </footer>
  
-      <div className="fixed bottom-4 right-4 z-50">
-        <button className="bg-primary-500 hover:bg-primary-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg shadow-primary-500/30 flex items-center gap-2 transition-all">
-          <Zap className="w-4 h-4" /> Поддержка
-        </button>
-      </div>
+      <SupportChat user={user} onOpenLogin={openLogin} />
     </div>
   );
 }
