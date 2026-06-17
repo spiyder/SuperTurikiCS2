@@ -184,7 +184,7 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
             </nav>
             <div className="hidden md:flex items-center gap-4">
               {user ? (
-                {user && <NotificationsBell user={user} onTeamJoined={() => setShowTeam(false)} />}
+                <NotificationsBell user={user} onTeamJoined={() => setShowTeam(false)} />
               <ProfileDropdown user={user} avatarUrl={avatarUrl} onLogout={handleLogout} onOpenProfile={() => setShowProfile(true)} />
               ) : (
                 <>
