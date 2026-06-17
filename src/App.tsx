@@ -192,10 +192,12 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
               <a href="#how-it-works" className="text-gray-300 hover:text-primary-500 transition-colors">Как это работает</a>
               <a href="#community" className="text-gray-300 hover:text-primary-500 transition-colors">Сообщество</a>
             </nav>
-            <div className="hidden md:flex items-center gap-4">
+            <div className="hidden md:flex items-center gap-4"> 
               {user ? (
-                {user && <NotificationsBell user={user} onTeamJoined={() => setShowTeam(false)} />}
+                <>
+              <NotificationsBell user={user} onTeamJoined={() => setShowTeam(false)} />
               <ProfileDropdown user={user} avatarUrl={avatarUrl} onLogout={handleLogout} onOpenProfile={() => setShowProfile(true)} />
+                </>
               ) : (
                 <>
                   <button onClick={openLogin} className="text-gray-300 hover:text-white transition-colors">Войти</button>
