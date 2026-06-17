@@ -184,8 +184,10 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
             </nav>
             <div className="hidden md:flex items-center gap-4">
               {user ? (
-                <NotificationsBell user={user} onTeamJoined={() => setShowTeam(false)} />
-              <ProfileDropdown user={user} avatarUrl={avatarUrl} onLogout={handleLogout} onOpenProfile={() => setShowProfile(true)} />
+                <>
+                  <NotificationsBell user={user} onTeamJoined={() => setShowTeam(false)} />
+                  <ProfileDropdown user={user} avatarUrl={avatarUrl} onLogout={handleLogout} onOpenProfile={() => setShowProfile(true)} />
+                </>
               ) : (
                 <>
                   <button onClick={openLogin} className="text-gray-300 hover:text-white transition-colors">Войти</button>
