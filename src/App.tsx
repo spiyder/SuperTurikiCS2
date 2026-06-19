@@ -19,6 +19,7 @@
   import { ProfileDropdown } from './components/ProfileDropdown';
   import { ProfilePage } from './pages/ProfilePage';
   import { TournamentPage } from './pages/TournamentPage';
+import { MatchLobbyPage } from './pages/MatchLobbyPage';
 import { NewsPage } from './pages/NewsPage';
 import { LfgPage } from './pages/LfgPage';
 import { TeamPage } from './pages/TeamPage';
@@ -65,6 +66,7 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
     const [showProfile, setShowProfile] = useState(false);
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
+    const [directLobbyId, setDirectLobbyId] = useState<string | null>(null);
     const [showNews, setShowNews] = useState(false);
     const [showFaq, setShowFaq] = useState(false);
     const [showLfg, setShowLfg] = useState(false);
@@ -73,6 +75,12 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
     const [showRules, setShowRules] = useState(false);
     const [showPrivacy, setShowPrivacy] = useState(false);
   
+    useEffect(() => {
+      const params = new URLSearchParams(window.location.search);
+      const lobbyParam = params.get('lobby');
+      if (lobbyParam) setDirectLobbyId(lobbyParam);
+    }, []);
+
     useEffect(() => {
       const handleScroll = () => setScrolled(window.scrollY > 50);
       window.addEventListener('scroll', handleScroll);
@@ -123,6 +131,14 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
   };
   const getUserName = () => user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Игрок';
  
+  if (directLobbyId) return (
+    <MatchLobbyPage
+      matchId={directLobbyId}
+      user={user}
+      userTeam={null}
+      onBack={() => { setDirectLobbyId(null); window.history.replaceState({}, '', '/'); }}
+    />
+  );
   if (isAdmin) return <AdminPage onLogout={handleLogout} />;
   if (showNews) return <NewsPage onBack={() => setShowNews(false)} />;
   if (showFaq)  return <FaqPage  onBack={() => setShowFaq(false)}  />;
@@ -192,12 +208,10 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
               <a href="#how-it-works" className="text-gray-300 hover:text-primary-500 transition-colors">Как это работает</a>
               <a href="#community" className="text-gray-300 hover:text-primary-500 transition-colors">Сообщество</a>
             </nav>
-            <div className="hidden md:flex items-center gap-4"> 
+            <div className="hidden md:flex items-center gap-4">
               {user ? (
-                <>
-              <NotificationsBell user={user} onTeamJoined={() => setShowTeam(false)} />
+                {user && <NotificationsBell user={user} onTeamJoined={() => setShowTeam(false)} />}
               <ProfileDropdown user={user} avatarUrl={avatarUrl} onLogout={handleLogout} onOpenProfile={() => setShowProfile(true)} />
-                </>
               ) : (
                 <>
                   <button onClick={openLogin} className="text-gray-300 hover:text-white transition-colors">Войти</button>
