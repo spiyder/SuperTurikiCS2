@@ -20,6 +20,7 @@
   import { ProfilePage } from './pages/ProfilePage';
   import { TournamentPage } from './pages/TournamentPage';
 import { MatchLobbyPage } from './pages/MatchLobbyPage';
+import { DirectLobbyWrapper } from './components/DirectLobbyWrapper';
 import { NewsPage } from './pages/NewsPage';
 import { LfgPage } from './pages/LfgPage';
 import { TeamPage } from './pages/TeamPage';
@@ -132,10 +133,9 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
   const getUserName = () => user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Игрок';
  
   if (directLobbyId) return (
-    <MatchLobbyPage
+    <DirectLobbyWrapper
       matchId={directLobbyId}
       user={user}
-      userTeam={null}
       onBack={() => { setDirectLobbyId(null); window.history.replaceState({}, '', '/'); }}
     />
   );
