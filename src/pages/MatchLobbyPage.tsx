@@ -55,13 +55,12 @@ interface ChatMsg {
 interface Props {
   matchId: string;
   user: SupabaseUser | null;
-  userTeam: 'team1' | 'team2' | null;
   onBack: () => void;
 }
 
 // ─── Component ───────────────────────────────────────────────
 
-export function MatchLobbyPage({ matchId, user, userTeam, onBack }: Props) {
+export function MatchLobbyPage({ matchId, user, onBack }: Props) {
   const [match, setMatch]             = useState<LobbyMatch | null>(null);
   const [players, setPlayers]         = useState<ReadyPlayer[]>([]);
   const [vetoActions, setVetoActions] = useState<VetoAction[]>([]);
@@ -77,6 +76,9 @@ export function MatchLobbyPage({ matchId, user, userTeam, onBack }: Props) {
   const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const myName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Игрок';
+
+  // Команда игрока определяется по тому, за какую сторону он зашёл в лобби
+  const userTeam: 'team1' | 'team2' | null = players.find(p => p.user_id === user?.id)?.team ?? null;
 
   // Формат матча — дефолт 5v5
   const format: MatchFormat = (match?.format as MatchFormat) ?? '5v5';
@@ -149,11 +151,11 @@ export function MatchLobbyPage({ matchId, user, userTeam, onBack }: Props) {
     channelRef.current = ch;
   };
 
-  const joinLobby = async () => {
-    if (!user || !userTeam) return;
+  const joinLobby = async (team: 'team1' | 'team2') => {
+    if (!user) return;
     setJoining(true);
     await supabase.from('lobby_ready').upsert({
-      match_id: matchId, user_id: user.id, username: myName, team: userTeam, is_ready: false,
+      match_id: matchId, user_id: user.id, username: myName, team, is_ready: false,
     }, { onConflict: 'match_id,user_id' });
     await loadPlayers();
     setJoining(false);
@@ -323,14 +325,22 @@ export function MatchLobbyPage({ matchId, user, userTeam, onBack }: Props) {
             </div>
           )}
 
-          {/* Join button */}
-          {match.phase === 'open' && !isJoined && user && userTeam && (
+          {/* Join button — выбор стороны */}
+          {match.phase === 'open' && !isJoined && user && (
             <div className="card">
-              <p className="text-gray-300 mb-4">Лобби открыто. Нажми чтобы зайти.</p>
-              <button onClick={joinLobby} disabled={joining} className="btn-primary w-full py-4 text-lg flex items-center justify-center gap-2">
-                {joining ? <Loader2 className="w-5 h-5 animate-spin" /> : <Users className="w-5 h-5" />}
-                Войти в лобби
-              </button>
+              <p className="text-gray-300 mb-4">Лобби открыто. Выбери за какую команду играешь.</p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <button onClick={() => joinLobby('team1')} disabled={joining}
+                  className="flex items-center justify-center gap-2 py-4 rounded-xl bg-primary-500/10 hover:bg-primary-500/20 border border-primary-500/40 text-primary-300 font-semibold transition-colors disabled:opacity-50">
+                  {joining ? <Loader2 className="w-5 h-5 animate-spin" /> : <Shield className="w-5 h-5" />}
+                  {match.team1_name}
+                </button>
+                <button onClick={() => joinLobby('team2')} disabled={joining}
+                  className="flex items-center justify-center gap-2 py-4 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/40 text-blue-300 font-semibold transition-colors disabled:opacity-50">
+                  {joining ? <Loader2 className="w-5 h-5 animate-spin" /> : <Shield className="w-5 h-5" />}
+                  {match.team2_name}
+                </button>
+              </div>
             </div>
           )}
 

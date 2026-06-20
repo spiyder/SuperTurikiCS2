@@ -745,7 +745,92 @@ function MatchCard({ match: m, onPhase, onScore, onDelete, onCopyLink, nextPhase
               <Save className="w-3 h-3" /> Сохранить
             </button>
           </div>
+          <LobbyRosterManager matchId={m.id} team1Name={m.team1_name} team2Name={m.team2_name} showToast={() => {}} />
           <p className="text-gray-700 text-xs font-mono mt-3">ID: {m.id}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Lobby roster manager — перенос игроков между сторонами ──────────────
+
+interface LobbyPlayer {
+  user_id: string;
+  username: string;
+  team: 'team1' | 'team2';
+  is_ready: boolean;
+}
+
+function LobbyRosterManager({ matchId, team1Name, team2Name, showToast }: {
+  matchId: string; team1Name: string; team2Name: string; showToast: (s: string) => void;
+}) {
+  const [players, setPlayers] = useState<LobbyPlayer[]>([]);
+  const [loadingRoster, setLoadingRoster] = useState(true);
+
+  useEffect(() => { load(); }, [matchId]);
+
+  const load = async () => {
+    setLoadingRoster(true);
+    const { data } = await supabase.from('lobby_ready').select('user_id, username, team, is_ready').eq('match_id', matchId);
+    if (data) setPlayers(data as LobbyPlayer[]);
+    setLoadingRoster(false);
+  };
+
+  const moveToTeam = async (userId: string, team: 'team1' | 'team2') => {
+    await supabase.from('lobby_ready').update({ team }).eq('match_id', matchId).eq('user_id', userId);
+    await load(); showToast('Игрок перемещён');
+  };
+
+  const removePlayer = async (userId: string) => {
+    await supabase.from('lobby_ready').delete().eq('match_id', matchId).eq('user_id', userId);
+    await load();
+  };
+
+  const team1 = players.filter(p => p.team === 'team1');
+  const team2 = players.filter(p => p.team === 'team2');
+
+  return (
+    <div className="mt-4 pt-4 border-t border-dark-50/40">
+      <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Игроки в лобби · {players.length}</p>
+      {loadingRoster ? (
+        <p className="text-gray-600 text-xs">Загрузка...</p>
+      ) : players.length === 0 ? (
+        <p className="text-gray-600 text-xs">Никто не зашёл в лобби</p>
+      ) : (
+        <div className="grid sm:grid-cols-2 gap-3">
+          {[{ list: team1, name: team1Name, side: 'team1' as const }, { list: team2, name: team2Name, side: 'team2' as const }].map(col => (
+            <div key={col.side} className="bg-dark-400/40 rounded-xl p-3">
+              <p className="text-xs font-semibold text-gray-300 mb-2">{col.name} ({col.list.length})</p>
+              {col.list.length === 0 ? (
+                <p className="text-gray-700 text-xs">Пусто</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {col.list.map(p => (
+                    <div key={p.user_id} className="flex items-center justify-between gap-2 bg-dark-300/60 rounded-lg px-2 py-1.5">
+                      <span className="text-xs text-gray-200 truncate">{p.username}</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => moveToTeam(p.user_id, col.side === 'team1' ? 'team2' : 'team1')}
+                          title="Перекинуть в другую команду"
+                          className="text-[10px] px-1.5 py-0.5 bg-dark-100 hover:bg-primary-500/20 hover:text-primary-400 text-gray-500 rounded transition-colors"
+                        >
+                          ⇄
+                        </button>
+                        <button
+                          onClick={() => removePlayer(p.user_id)}
+                          title="Удалить из лобби"
+                          className="text-[10px] px-1.5 py-0.5 bg-dark-100 hover:bg-red-500/20 hover:text-red-400 text-gray-500 rounded transition-colors"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>

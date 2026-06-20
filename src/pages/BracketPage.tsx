@@ -315,7 +315,6 @@ export function BracketPage({ tournament, user, userTeam, isAdmin, onBack }: Pro
       <MatchLobbyPage
         matchId={activeLobby.id}
         user={user}
-        userTeam={userTeam}
         onBack={() => setActiveLobby(null)}
       />
     );
