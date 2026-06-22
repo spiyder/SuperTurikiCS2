@@ -21,6 +21,7 @@
   import { TournamentPage } from './pages/TournamentPage';
 import { MatchLobbyPage } from './pages/MatchLobbyPage';
 import { DirectLobbyWrapper } from './components/DirectLobbyWrapper';
+import { QuickLobbyPage } from './pages/QuickLobbyPage';
 import { NewsPage } from './pages/NewsPage';
 import { LfgPage } from './pages/LfgPage';
 import { TeamPage } from './pages/TeamPage';
@@ -68,6 +69,7 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
     const [directLobbyId, setDirectLobbyId] = useState<string | null>(null);
+    const [showQuickLobby, setShowQuickLobby] = useState(false);
     const [showNews, setShowNews] = useState(false);
     const [showFaq, setShowFaq] = useState(false);
     const [showLfg, setShowLfg] = useState(false);
@@ -80,6 +82,8 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
       const params = new URLSearchParams(window.location.search);
       const lobbyParam = params.get('lobby');
       if (lobbyParam) setDirectLobbyId(lobbyParam);
+      const qlobbyParam = params.get('qlobby');
+      if (qlobbyParam) setShowQuickLobby(true);
     }, []);
 
     useEffect(() => {
@@ -132,6 +136,9 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
   };
   const getUserName = () => user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Игрок';
  
+  if (showQuickLobby) return (
+    <QuickLobbyPage lobbyId={new URLSearchParams(window.location.search).get('qlobby') ?? undefined} />
+  );
   if (directLobbyId) return (
     <DirectLobbyWrapper
       matchId={directLobbyId}
@@ -203,6 +210,7 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
               <a href="#features" className="text-gray-300 hover:text-primary-500 transition-colors">Возможности</a>
               <button onClick={() => setShowNews(true)} className="text-gray-300 hover:text-primary-500 transition-colors">Новости</button>
               <button onClick={() => setShowLfg(true)} className="text-gray-300 hover:text-primary-500 transition-colors">LFG</button>
+              <button onClick={() => { setShowQuickLobby(true); window.history.replaceState({}, '', '?quicklobby'); }} className="text-gray-300 hover:text-primary-500 transition-colors">Быстрое лобби</button>
               {user && <button onClick={() => setShowTeam(true)} className="text-gray-300 hover:text-primary-500 transition-colors">Команда</button>}
               <button onClick={() => setShowFaq(true)} className="text-gray-300 hover:text-primary-500 transition-colors">FAQ</button>
               <a href="#how-it-works" className="text-gray-300 hover:text-primary-500 transition-colors">Как это работает</a>
