@@ -10,7 +10,7 @@
   import { useState, useEffect } from 'react';
   import {
     Trophy, Users, Gamepad2, Zap, Shield, Target, Crown, Star,
-    ChevronRight, Menu, X, Play, Calendar, Award, TrendingUp,
+    ChevronRight, ChevronDown, Menu, X, Play, Calendar, Award, TrendingUp,
     MessageCircle, Send,
   } from 'lucide-react';
   import { supabase } from './lib/supabase';
@@ -70,6 +70,7 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
     const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
     const [directLobbyId, setDirectLobbyId] = useState<string | null>(null);
     const [showQuickLobby, setShowQuickLobby] = useState(false);
+    const [showMoreMenu, setShowMoreMenu] = useState(false);
     const [showNews, setShowNews] = useState(false);
     const [showFaq, setShowFaq] = useState(false);
     const [showLfg, setShowLfg] = useState(false);
@@ -205,16 +206,25 @@ import { FaqPage } from './pages/FaqPage'; // ← НОВЫЙ ИМПОРТ
                 Super<span className="text-primary-500">Turiki</span>CS2
               </span>
             </div>
-            <nav className="hidden md:flex items-center gap-5 flex-wrap">
+            <nav className="hidden md:flex items-center gap-5 flex-wrap relative">
               <a href="#tournaments" className="text-gray-300 hover:text-primary-500 transition-colors">Турниры</a>
-              <a href="#features" className="text-gray-300 hover:text-primary-500 transition-colors">Возможности</a>
-              <button onClick={() => setShowNews(true)} className="text-gray-300 hover:text-primary-500 transition-colors">Новости</button>
               <button onClick={() => setShowLfg(true)} className="text-gray-300 hover:text-primary-500 transition-colors">LFG</button>
               <button onClick={() => { setShowQuickLobby(true); window.history.replaceState({}, '', '?quicklobby'); }} className="text-gray-300 hover:text-primary-500 transition-colors">Быстрое лобби</button>
               {user && <button onClick={() => setShowTeam(true)} className="text-gray-300 hover:text-primary-500 transition-colors">Команда</button>}
-              <button onClick={() => setShowFaq(true)} className="text-gray-300 hover:text-primary-500 transition-colors">FAQ</button>
-              <a href="#how-it-works" className="text-gray-300 hover:text-primary-500 transition-colors">Как это работает</a>
-              <a href="#community" className="text-gray-300 hover:text-primary-500 transition-colors">Сообщество</a>
+              <div className="relative">
+                <button onClick={() => setShowMoreMenu(!showMoreMenu)} className="flex items-center gap-1 text-gray-300 hover:text-primary-500 transition-colors">
+                  Ещё <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showMoreMenu ? 'rotate-180' : ''}`} />
+                </button>
+                {showMoreMenu && (
+                  <div className="absolute top-8 left-0 bg-dark-100 border border-dark-50 rounded-xl p-1.5 min-w-[180px] shadow-xl z-50">
+                    <a href="#features" onClick={() => setShowMoreMenu(false)} className="block px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-dark-50/50 rounded-lg transition-colors">Возможности</a>
+                    <button onClick={() => { setShowNews(true); setShowMoreMenu(false); }} className="block w-full text-left px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-dark-50/50 rounded-lg transition-colors">Новости</button>
+                    <button onClick={() => { setShowFaq(true); setShowMoreMenu(false); }} className="block w-full text-left px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-dark-50/50 rounded-lg transition-colors">FAQ</button>
+                    <a href="#how-it-works" onClick={() => setShowMoreMenu(false)} className="block px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-dark-50/50 rounded-lg transition-colors">Как это работает</a>
+                    <a href="#community" onClick={() => setShowMoreMenu(false)} className="block px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-dark-50/50 rounded-lg transition-colors">Сообщество</a>
+                  </div>
+                )}
+              </div>
             </nav>
             <div className="hidden md:flex items-center gap-4">
               {user ? (
