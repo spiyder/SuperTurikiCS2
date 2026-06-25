@@ -261,7 +261,7 @@ export function QuickLobbyPage({ lobbyId: initialLobbyId }: Props) {
   // ── Chat ──────────────────────────────────────────────────
   const sendMessage = async () => {
     if (!chatInput.trim() || !lobbyId) return;
-    await supabase.from('quick_lobby_chat').insert({ lobby_id: lobbyId, session_id, username, message: chatInput.trim() });
+    await supabase.from('quick_lobby_chat').insert({ lobby_id: lobbyId, session_id: sessionId, username, message: chatInput.trim() });
     setChatInput('');
   };
 
