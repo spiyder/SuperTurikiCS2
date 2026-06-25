@@ -33,25 +33,33 @@ function saveUsername(name: string) {
 
 type Format = '1v1' | '2v2' | '5v5';
 
-const MAPS: Record<Format, { name: string; display: string }[]> = {
+import deMirage from '../assets/maps/de_mirage.jpg';
+import deDust2 from '../assets/maps/de_dust2.jpg';
+import deOverpass from '../assets/maps/de_overpass.jpg';
+import deAnubis from '../assets/maps/de_anubis.jpg';
+import deInferno from '../assets/maps/de_inferno.jpg';
+import deAncient from '../assets/maps/de_ancient.jpg';
+import deNuke from '../assets/maps/de_nuke.jpg';
+
+const MAPS: Record<Format, { name: string; display: string; image?: string }[]> = {
   '1v1': [{ name: 'aim_map', display: 'Aim Map' }],
   '2v2': [
-    { name: 'de_nuke', display: 'Nuke' },
-    { name: 'de_inferno', display: 'Inferno' },
-    { name: 'de_dust2_wingman', display: 'Dust2 Wingman' },
-    { name: 'de_mirage_wingman', display: 'Mirage Wingman' },
+    { name: 'de_nuke', display: 'Nuke', image: deNuke },
+    { name: 'de_inferno', display: 'Inferno', image: deInferno },
+    { name: 'de_dust2_wingman', display: 'Dust2 Wingman', image: deDust2 },
+    { name: 'de_mirage_wingman', display: 'Mirage Wingman', image: deMirage },
     { name: 'de_train_wingman', display: 'Train Wingman' },
-    { name: 'de_anubis_wingman', display: 'Anubis Wingman' },
-    { name: 'de_overpass', display: 'Overpass' },
+    { name: 'de_anubis_wingman', display: 'Anubis Wingman', image: deAnubis },
+    { name: 'de_overpass', display: 'Overpass', image: deOverpass },
   ],
   '5v5': [
-    { name: 'de_mirage', display: 'Mirage' },
-    { name: 'de_dust2', display: 'Dust2' },
-    { name: 'de_overpass', display: 'Overpass' },
-    { name: 'de_anubis', display: 'Anubis' },
-    { name: 'de_inferno', display: 'Inferno' },
-    { name: 'de_ancient', display: 'Ancient' },
-    { name: 'de_nuke', display: 'Nuke' },
+    { name: 'de_mirage', display: 'Mirage', image: deMirage },
+    { name: 'de_dust2', display: 'Dust2', image: deDust2 },
+    { name: 'de_overpass', display: 'Overpass', image: deOverpass },
+    { name: 'de_anubis', display: 'Anubis', image: deAnubis },
+    { name: 'de_inferno', display: 'Inferno', image: deInferno },
+    { name: 'de_ancient', display: 'Ancient', image: deAncient },
+    { name: 'de_nuke', display: 'Nuke', image: deNuke },
   ],
 };
 
@@ -261,7 +269,7 @@ export function QuickLobbyPage({ lobbyId: initialLobbyId }: Props) {
   // ── Chat ──────────────────────────────────────────────────
   const sendMessage = async () => {
     if (!chatInput.trim() || !lobbyId) return;
-    await supabase.from('quick_lobby_chat').insert({ lobby_id: lobbyId, session_id: sessionId, username, message: chatInput.trim() });
+    await supabase.from('quick_lobby_chat').insert({ lobby_id: lobbyId, session_id, username, message: chatInput.trim() });
     setChatInput('');
   };
 
@@ -533,11 +541,15 @@ export function QuickLobbyPage({ lobbyId: initialLobbyId }: Props) {
                         isBanned ? 'opacity-30 grayscale border-dark-50' :
                         canBan ? 'border-primary-500/40 hover:scale-105 hover:ring-2 hover:ring-primary-500 cursor-pointer' : 'border-dark-50'
                       } bg-dark-100`}>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="font-display font-bold text-sm text-white">{m.display}</span>
+                      {m.image ? (
+                        <img src={m.image} alt={m.display} className="absolute inset-0 w-full h-full object-cover" />
+                      ) : null}
+                      <div className="absolute inset-0 bg-gradient-to-t from-dark-400/90 via-dark-400/10 to-transparent" />
+                      <div className="absolute bottom-0 inset-x-0 px-2 py-2 flex items-center justify-center">
+                        <span className="font-display font-bold text-sm text-white drop-shadow-lg">{m.display}</span>
                       </div>
-                      {isBanned && <div className="absolute inset-0 bg-red-900/50 flex items-center justify-center"><span className="text-xs font-bold text-white">БАН</span></div>}
-                      {isFinal && <div className="absolute top-1 right-1 text-yellow-400 text-xs">⚡</div>}
+                      {isBanned && <div className="absolute inset-0 bg-red-900/60 flex items-center justify-center"><span className="text-xs font-bold text-white">БАН</span></div>}
+                      {isFinal && <div className="absolute top-1.5 right-1.5 text-yellow-400 text-base drop-shadow">⚡</div>}
                     </button>
                   );
                 })}
