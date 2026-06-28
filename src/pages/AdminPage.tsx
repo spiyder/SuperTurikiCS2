@@ -39,6 +39,7 @@ interface Tournament {
   entry_fee?: number;
   prize_pool?: number;
   description?: string;
+  format: '1v1' | '2v2' | '5v5';
 }
 
 interface LobbyMatch {
@@ -374,7 +375,7 @@ function TournamentsTab({ showToast }: { showToast: (s: string) => void }) {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-  const blank: Tournament = { name: '', date: '', prize: '', slots_taken: 0, slots_total: 16, status: 'open', entry_fee: 0, prize_pool: 0, description: '' };
+  const blank: Tournament = { name: '', date: '', prize: '', slots_taken: 0, slots_total: 16, status: 'open', entry_fee: 0, prize_pool: 0, description: '', format: '5v5' };
   const [form, setForm] = useState<Tournament>(blank);
 
   useEffect(() => { load(); }, []);
@@ -403,7 +404,7 @@ function TournamentsTab({ showToast }: { showToast: (s: string) => void }) {
     await load(); showToast('Удалено');
   };
 
-  const startEdit = (t: Tournament) => { setForm(t); setEditId(t.id!); };
+  const startEdit = (t: Tournament) => { setForm({ ...t, format: t.format ?? '5v5' }); setEditId(t.id!); };
 
   const statusColor: Record<string, string> = {
     open:     'bg-green-500/20 text-green-400',
@@ -435,6 +436,14 @@ function TournamentsTab({ showToast }: { showToast: (s: string) => void }) {
               <option value="open">Открыта регистрация</option>
               <option value="soon">Скоро</option>
               <option value="finished">Завершён</option>
+            </select>
+          </div>
+          <div>
+            <label className={LABEL}>Формат</label>
+            <select value={form.format} onChange={e => setForm({ ...form, format: e.target.value as Tournament['format'] })} className={SELECT}>
+              <option value="1v1">1v1 (Дуэль)</option>
+              <option value="2v2">2v2 (Wingman)</option>
+              <option value="5v5">5v5 (Классика)</option>
             </select>
           </div>
           <div>
@@ -480,6 +489,9 @@ function TournamentsTab({ showToast }: { showToast: (s: string) => void }) {
                 <span className="font-display font-bold text-white">{t.name}</span>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusColor[t.status]}`}>
                   {statusLabel[t.status]}
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-400">
+                  {t.format}
                 </span>
                 {(t.entry_fee ?? 0) > 0 && (
                   <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-400">

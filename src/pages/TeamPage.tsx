@@ -6,7 +6,7 @@ import {
   ArrowLeft, Shield, Crown, Users, Trophy, Swords,
   Edit3, Save, X, UserPlus, UserMinus, Upload,
   TrendingUp, Clock, CheckCircle2, Star, Loader2,
-  Copy, Check,
+  Copy, Check, Layers, Plus, Trash2,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
@@ -65,7 +65,7 @@ export function TeamPage({ user, teamId: propTeamId, onBack, showToast }: Props)
   const [history, setHistory]   = useState<MatchHistory[]>([]);
   const [loading, setLoading]   = useState(true);
   const [myTeamId, setMyTeamId] = useState<string | null>(null);
-  const [tab, setTab]           = useState<'overview' | 'roster' | 'history'>('overview');
+  const [tab, setTab]           = useState<'overview' | 'roster' | 'lineups' | 'history'>('overview');
 
   // Edit states
   const [editingName, setEditingName]   = useState(false);
@@ -478,6 +478,7 @@ export function TeamPage({ user, teamId: propTeamId, onBack, showToast }: Props)
           {([
             { id: 'overview', label: 'Обзор',   icon: Star },
             { id: 'roster',   label: 'Состав',  icon: Users },
+            { id: 'lineups',  label: 'Составы для турниров', icon: Layers },
             { id: 'history',  label: 'История матчей', icon: Swords },
           ] as const).map(({ id, label, icon: Icon }) => (
             <button key={id} onClick={() => setTab(id)}
@@ -567,6 +568,11 @@ export function TeamPage({ user, teamId: propTeamId, onBack, showToast }: Props)
           </div>
         )}
 
+        {/* LINEUPS — составы под форматы 1v1/2v2/5v5 */}
+        {tab === 'lineups' && (
+          <LineupsManager team={team} members={members} isCaptain={isCaptain} showToast={showToast} />
+        )}
+
         {/* HISTORY */}
         {tab === 'history' && (
           <div className="space-y-2">
@@ -607,6 +613,202 @@ export function TeamPage({ user, teamId: propTeamId, onBack, showToast }: Props)
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── Lineups Manager — составы команды под форматы 1v1/2v2/5v5 (как на FACEIT) ──
+
+type Format = '1v1' | '2v2' | '5v5';
+const FORMAT_SIZE: Record<Format, number> = { '1v1': 1, '2v2': 2, '5v5': 5 };
+const FORMAT_LABEL: Record<Format, string> = { '1v1': '1v1', '2v2': '2v2', '5v5': '5v5' };
+
+interface Lineup {
+  id: string;
+  team_id: string;
+  name: string;
+  format: Format;
+  created_at: string;
+}
+
+interface LineupPlayer {
+  id: string;
+  lineup_id: string;
+  user_id: string;
+  is_captain: boolean;
+}
+
+function LineupsManager({ team, members, isCaptain, showToast }: {
+  team: Team; members: TeamMember[]; isCaptain: boolean; showToast: (s: string) => void;
+}) {
+  const [lineups, setLineups]             = useState<Lineup[]>([]);
+  const [lineupPlayers, setLineupPlayers] = useState<Record<string, LineupPlayer[]>>({});
+  const [loading, setLoading]             = useState(true);
+
+  // Create form
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName]       = useState('');
+  const [newFormat, setNewFormat]   = useState<Format>('5v5');
+  const [creating, setCreating]     = useState(false);
+
+  useEffect(() => { load(); }, [team.id]);
+
+  const load = async () => {
+    setLoading(true);
+    const { data: lineupsData } = await supabase.from('team_lineups').select('*').eq('team_id', team.id).order('created_at');
+    if (lineupsData) {
+      setLineups(lineupsData);
+      const { data: playersData } = await supabase
+        .from('team_lineup_players')
+        .select('*')
+        .in('lineup_id', lineupsData.map(l => l.id));
+
+      const grouped: Record<string, LineupPlayer[]> = {};
+      (playersData ?? []).forEach((p: LineupPlayer) => {
+        grouped[p.lineup_id] = grouped[p.lineup_id] ? [...grouped[p.lineup_id], p] : [p];
+      });
+      setLineupPlayers(grouped);
+    }
+    setLoading(false);
+  };
+
+  const createLineup = async () => {
+    if (!newName.trim()) return;
+    setCreating(true);
+    const { data, error } = await supabase.from('team_lineups').insert({
+      team_id: team.id, name: newName.trim(), format: newFormat,
+    }).select().single();
+    if (!error && data) {
+      setNewName(''); setShowCreate(false);
+      await load();
+      showToast('Состав создан!');
+    } else {
+      showToast('Ошибка создания состава');
+    }
+    setCreating(false);
+  };
+
+  const deleteLineup = async (id: string) => {
+    await supabase.from('team_lineups').delete().eq('id', id);
+    await load(); showToast('Состав удалён');
+  };
+
+  const togglePlayer = async (lineupId: string, userId: string, format: Format) => {
+    const current = lineupPlayers[lineupId] ?? [];
+    const already = current.find(p => p.user_id === userId);
+
+    if (already) {
+      await supabase.from('team_lineup_players').delete().eq('id', already.id);
+    } else {
+      const maxSize = FORMAT_SIZE[format];
+      if (current.length >= maxSize) {
+        showToast(`Максимум ${maxSize} игроков для формата ${format}`);
+        return;
+      }
+      await supabase.from('team_lineup_players').insert({ lineup_id: lineupId, user_id: userId, is_captain: current.length === 0 });
+    }
+    await load();
+  };
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-16">
+      <Loader2 className="w-6 h-6 text-primary-500 animate-spin" />
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-display font-bold text-white text-lg">Составы для турниров</h3>
+          <p className="text-gray-500 text-sm">Создавай отдельные составы под 1v1 / 2v2 / 5v5 — как на FACEIT</p>
+        </div>
+        {isCaptain && (
+          <button onClick={() => setShowCreate(!showCreate)} className="btn-primary text-sm py-2 px-4 flex items-center gap-1.5">
+            <Plus className="w-4 h-4" /> Новый состав
+          </button>
+        )}
+      </div>
+
+      {showCreate && (
+        <div className="card border-primary-500/30 bg-primary-500/5 space-y-3">
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-gray-500 uppercase tracking-wider mb-1 block">Название состава</label>
+              <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Основа 5v5" maxLength={40}
+                className="w-full bg-dark-300 border border-dark-50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary-500" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 uppercase tracking-wider mb-1 block">Формат</label>
+              <div className="flex gap-2">
+                {(['1v1', '2v2', '5v5'] as Format[]).map(f => (
+                  <button key={f} onClick={() => setNewFormat(f)}
+                    className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
+                      newFormat === f ? 'bg-primary-500/20 text-primary-400 border border-primary-500/50' : 'bg-dark-300 border border-dark-50 text-gray-400'
+                    }`}>
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <button onClick={createLineup} disabled={creating || !newName.trim()} className="btn-primary flex items-center gap-2 disabled:opacity-50">
+            {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Создать
+          </button>
+        </div>
+      )}
+
+      {lineups.length === 0 ? (
+        <div className="card text-center py-12">
+          <Layers className="w-10 h-10 text-gray-700 mx-auto mb-3" />
+          <p className="text-gray-500">Составов пока нет</p>
+          <p className="text-gray-600 text-sm mt-1">Создай состав чтобы регистрироваться на турниры 1v1/2v2/5v5</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {lineups.map(lineup => {
+            const players = lineupPlayers[lineup.id] ?? [];
+            const maxSize = FORMAT_SIZE[lineup.format];
+            return (
+              <div key={lineup.id} className="card">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-white">{lineup.name}</span>
+                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-400">
+                      {FORMAT_LABEL[lineup.format]}
+                    </span>
+                    <span className="text-gray-500 text-xs">{players.length}/{maxSize} игроков</span>
+                  </div>
+                  {isCaptain && (
+                    <button onClick={() => deleteLineup(lineup.id)} className="p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {members.map(m => {
+                    const selected = players.some(p => p.user_id === m.user_id);
+                    const isCap = players.find(p => p.user_id === m.user_id)?.is_captain;
+                    return (
+                      <button
+                        key={m.user_id}
+                        onClick={() => isCaptain && togglePlayer(lineup.id, m.user_id, lineup.format)}
+                        disabled={!isCaptain}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                          selected ? 'bg-primary-500/20 text-primary-400 border border-primary-500/50' : 'bg-dark-100 border border-dark-50 text-gray-400 hover:text-white'
+                        } ${!isCaptain ? 'cursor-default' : 'cursor-pointer'}`}>
+                        {isCap && <Crown className="w-3 h-3 text-yellow-400" />}
+                        {m.profile?.username ?? '?'}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

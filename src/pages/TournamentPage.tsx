@@ -18,7 +18,7 @@ interface Tournament {
   slots_taken: number;
   slots_total: number;
   status: string;
-  format?: string;
+  format: '1v1' | '2v2' | '5v5';
   bracket_generated?: boolean;
 }
 
@@ -219,7 +219,45 @@ function RegModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const canRegister = !!myTeam && myTeam.members.length === 5 && gameNick.trim() && agreed;
+  // Составы команды, подходящие под формат турнира
+  const [lineups, setLineups] = useState<{ id: string; name: string; format: string; playerCount: number }[]>([]);
+  const [selectedLineupId, setSelectedLineupId] = useState<string>('');
+  const [loadingLineups, setLoadingLineups] = useState(true);
+
+  const requiredSize = { '1v1': 1, '2v2': 2, '5v5': 5 }[tournament.format] ?? 5;
+
+  useEffect(() => { loadLineups(); }, [myTeam?.id, tournament.format]);
+
+  const loadLineups = async () => {
+    if (!myTeam) { setLoadingLineups(false); return; }
+    setLoadingLineups(true);
+    const { data: lineupsData } = await supabase
+      .from('team_lineups')
+      .select('id, name, format')
+      .eq('team_id', myTeam.id)
+      .eq('format', tournament.format);
+
+    if (lineupsData && lineupsData.length > 0) {
+      const { data: playersData } = await supabase
+        .from('team_lineup_players')
+        .select('lineup_id')
+        .in('lineup_id', lineupsData.map(l => l.id));
+
+      const counts: Record<string, number> = {};
+      (playersData ?? []).forEach((p: any) => { counts[p.lineup_id] = (counts[p.lineup_id] ?? 0) + 1; });
+
+      const enriched = lineupsData.map(l => ({ ...l, playerCount: counts[l.id] ?? 0 }));
+      setLineups(enriched);
+      const firstFull = enriched.find(l => l.playerCount === requiredSize);
+      if (firstFull) setSelectedLineupId(firstFull.id);
+    } else {
+      setLineups([]);
+    }
+    setLoadingLineups(false);
+  };
+
+  const selectedLineup = lineups.find(l => l.id === selectedLineupId);
+  const canRegister = !!myTeam && !!selectedLineup && selectedLineup.playerCount === requiredSize && gameNick.trim() && agreed;
 
   const handleRegister = async () => {
     if (!myTeam || !canRegister) return;
@@ -241,10 +279,11 @@ function RegModal({
         captain_id: user.id,
         game_nick: gameNick.trim(),
         steam_id: steamId.trim() || null,
+        lineup_id: selectedLineupId,
       });
 
     if (insertError) {
-      if (insertError.code === '23505') setError('Твоя команда уже зарегистрирована на этот турнир');
+      if (insertError.code === '23505') setError('Этот состав уже зарегистрирован на турнир');
       else setError('Ошибка регистрации. Попробуй ещё раз.');
       setLoading(false);
       return;
@@ -268,7 +307,7 @@ function RegModal({
             </div>
             <div>
               <h2 className="font-display font-bold text-white">Регистрация</h2>
-              <p className="text-gray-500 text-xs truncate max-w-[200px]">{tournament.name}</p>
+              <p className="text-gray-500 text-xs truncate max-w-[200px]">{tournament.name} · {tournament.format}</p>
             </div>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors p-1">
@@ -283,7 +322,7 @@ function RegModal({
                 <CheckCircle className="w-8 h-8 text-green-400" />
               </div>
               <h3 className="font-display font-bold text-xl text-white mb-2">Готово!</h3>
-              <p className="text-gray-400">Ваша команда зарегистрирована на турнир.</p>
+              <p className="text-gray-400">Ваш состав зарегистрирован на турнир.</p>
             </div>
           ) : (
             <div className="space-y-5">
@@ -292,47 +331,48 @@ function RegModal({
                 <div className="flex items-start gap-3 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
                   <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
                   <p className="text-yellow-200/80 text-sm">
-                    У тебя нет команды. Перейди в <strong className="text-yellow-300">Профиль → Моя команда</strong>, создай команду и добавь 4 игрока.
-                  </p>
-                </div>
-              )}
-              {myTeam && myTeam.members.length !== 5 && (
-                <div className="flex items-start gap-3 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
-                  <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-yellow-200/80 text-sm">
-                    В команде <strong className="text-yellow-300">{myTeam.members.length}/5 игроков</strong>. Добавь недостающих в разделе <strong className="text-yellow-300">Моя команда</strong>.
+                    У тебя нет команды. Перейди в <strong className="text-yellow-300">Профиль → Моя команда</strong>, создай команду и добавь игроков.
                   </p>
                 </div>
               )}
 
-              {/* Team preview */}
-              {myTeam && (
-                <div className="bg-dark-200 rounded-xl p-4 border border-dark-50">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-dark-300 border border-dark-50 flex items-center justify-center flex-shrink-0">
-                      {myTeam.avatar_url
-                        ? <img src={myTeam.avatar_url} alt="" className="w-full h-full object-cover" />
-                        : <Crown className="w-5 h-5 text-primary-400" />
-                      }
-                    </div>
-                    <div>
-                      <div className="text-white font-bold">{myTeam.name}</div>
-                      <div className="text-gray-500 text-xs">[{myTeam.tag}] · {myTeam.members.length}/5 игроков</div>
-                    </div>
-                    {myTeam.members.length === 5 && <UserCheck className="w-5 h-5 text-green-400 ml-auto" />}
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    {myTeam.members.map((m) => (
-                      <div key={m.id} className="flex flex-col items-center gap-1" title={m.username}>
-                        <div className="w-9 h-9 rounded-lg bg-dark-300 border border-dark-50 overflow-hidden flex items-center justify-center">
-                          {m.avatar_url
-                            ? <img src={m.avatar_url} alt="" className="w-full h-full object-cover" />
-                            : <Gamepad2 className="w-4 h-4 text-gray-600" />
-                          }
-                        </div>
-                        <span className="text-gray-500 text-xs max-w-[44px] truncate text-center">{m.username}</span>
-                      </div>
-                    ))}
+              {myTeam && !loadingLineups && lineups.length === 0 && (
+                <div className="flex items-start gap-3 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
+                  <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-yellow-200/80 text-sm">
+                    У твоей команды нет состава под формат <strong className="text-yellow-300">{tournament.format}</strong>.
+                    Создай его в разделе <strong className="text-yellow-300">Команда → Составы для турниров</strong>.
+                  </p>
+                </div>
+              )}
+
+              {/* Lineup selection */}
+              {myTeam && lineups.length > 0 && (
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">
+                    Выбери состав ({tournament.format}, нужно {requiredSize} игроков)
+                  </label>
+                  <div className="space-y-2">
+                    {lineups.map(l => {
+                      const isFull = l.playerCount === requiredSize;
+                      const isSelected = selectedLineupId === l.id;
+                      return (
+                        <button key={l.id} onClick={() => isFull && setSelectedLineupId(l.id)}
+                          disabled={!isFull}
+                          className={`w-full flex items-center justify-between gap-3 p-3 rounded-xl border text-left transition-all ${
+                            isSelected ? 'bg-primary-500/10 border-primary-500/50' :
+                            isFull ? 'bg-dark-200 border-dark-50 hover:border-primary-500/30' : 'bg-dark-200/50 border-dark-50 opacity-50 cursor-not-allowed'
+                          }`}>
+                          <div className="flex items-center gap-2">
+                            {isSelected && <UserCheck className="w-4 h-4 text-primary-400" />}
+                            <span className="text-white font-medium text-sm">{l.name}</span>
+                          </div>
+                          <span className={`text-xs font-semibold ${isFull ? 'text-green-400' : 'text-yellow-400'}`}>
+                            {l.playerCount}/{requiredSize} игроков
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
